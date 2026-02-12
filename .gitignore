@@ -5,3 +5,4 @@ dist/
 *.htm
 *_files/
 .DS_Store
+release.sh
