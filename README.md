@@ -34,8 +34,8 @@ It builds on proven industry templates, copywriting frameworks, and lifecycle be
 ## Quick Start
 
 ```bash
-# Install from GitHub
-npm install -g github:sr-kai/mango-lollipop
+# Install
+npm install -g mango-lollipop
 
 # Initialize a project
 mango-lollipop init my-company
@@ -43,8 +43,6 @@ mango-lollipop init my-company
 # Open Claude Code in your project and run the start skill
 /start
 ```
-
-> Once published to npm: `npm install -g mango-lollipop`
 
 ## Typical Workflow
 
