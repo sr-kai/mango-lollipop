@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{PROJECT_NAME}} — Lifecycle Messaging Overview</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  <style>
+    /* ===== Base ===== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #1a1a1a;
+      background: #ffffff;
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 24px;
+    }
+
+    h1, h2, h3 {
+      font-family: Georgia, 'Times New Roman', serif;
+      font-weight: 700;
+    }
+
+    h1 { font-size: 2rem; margin-bottom: 0.25rem; }
+    h2 { font-size: 1.35rem; margin-top: 2.5rem; margin-bottom: 1rem; padding-bottom: 0.4rem; border-bottom: 2px solid #e5e7eb; }
+    h3 { font-size: 1.05rem; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+
+    p { margin-bottom: 0.75rem; }
+
+    /* ===== Header ===== */
+    .overview-header {
+      border-bottom: 3px solid #1a1a1a;
+      padding-bottom: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .overview-header .subtitle {
+      color: #6b7280;
+      font-size: 0.95rem;
+    }
+
+    .overview-header .meta {
+      margin-top: 0.75rem;
+      font-size: 0.85rem;
+      color: #9ca3af;
+    }
+
+    /* ===== Company Overview ===== */
+    .company-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .company-item {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 1rem;
+    }
+
+    .company-item .label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #6b7280;
+      margin-bottom: 0.25rem;
+    }
+
+    .company-item .value {
+      font-size: 0.95rem;
+      color: #1a1a1a;
+    }
+
+    /* ===== Stage Colors ===== */
+    .stage-tx { color: #6b7280; }
+    .stage-aq { color: #16a34a; }
+    .stage-ac { color: #2563eb; }
+    .stage-rv { color: #ca8a04; }
+    .stage-rt { color: #ea580c; }
+    .stage-rf { color: #9333ea; }
+
+    .stage-bg-tx { background-color: #f3f4f6; }
+    .stage-bg-aq { background-color: #dcfce7; }
+    .stage-bg-ac { background-color: #dbeafe; }
+    .stage-bg-rv { background-color: #fef9c3; }
+    .stage-bg-rt { background-color: #ffedd5; }
+    .stage-bg-rf { background-color: #f3e8ff; }
+
+    /* ===== AARRR Strategy ===== */
+    .strategy-list {
+      list-style: none;
+    }
+
+    .strategy-item {
+      display: flex;
+      gap: 1rem;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .strategy-item:last-child { border-bottom: none; }
+
+    .strategy-badge {
+      flex-shrink: 0;
+      width: 3rem;
+      height: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      border-radius: 6px;
+    }
+
+    .strategy-content {
+      flex: 1;
+    }
+
+    .strategy-content .stage-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .strategy-content .stage-desc {
+      font-size: 0.85rem;
+      color: #6b7280;
+    }
+
+    /* ===== Matrix Table ===== */
+    .matrix-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+    }
+
+    .matrix-table th {
+      background: #f9fafb;
+      text-align: left;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #6b7280;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    .matrix-table td {
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid #f3f4f6;
+      vertical-align: top;
+    }
+
+    .matrix-table tr:last-child td { border-bottom: none; }
+
+    .matrix-table .id-cell {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .matrix-table .stage-pill {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.1rem 0.5rem;
+      border-radius: 9999px;
+    }
+
+    .matrix-table .channels-cell {
+      font-size: 0.8rem;
+      color: #6b7280;
+    }
+
+    /* ===== Journey Map ===== */
+    .journey-container {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 1.5rem;
+      overflow-x: auto;
+      margin-bottom: 1rem;
+    }
+
+    .mermaid { max-width: 100%; }
+
+    /* ===== Inventory ===== */
+    .inventory-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .inventory-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 1rem;
+    }
+
+    .inventory-card .card-title {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #6b7280;
+      margin-bottom: 0.5rem;
+    }
+
+    .inventory-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.25rem 0;
+      font-size: 0.9rem;
+    }
+
+    .inventory-row .count {
+      font-weight: 600;
+    }
+
+    /* ===== Tags ===== */
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .tag-item {
+      background: #f3f4f6;
+      color: #374151;
+      font-size: 0.8rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+    }
+
+    /* ===== Implementation Order ===== */
+    .impl-list {
+      list-style: none;
+      counter-reset: impl-counter;
+    }
+
+    .impl-item {
+      counter-increment: impl-counter;
+      display: flex;
+      gap: 0.75rem;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .impl-item:last-child { border-bottom: none; }
+
+    .impl-item::before {
+      content: counter(impl-counter);
+      flex-shrink: 0;
+      width: 1.5rem;
+      height: 1.5rem;
+      background: #1a1a1a;
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .impl-content {
+      flex: 1;
+    }
+
+    .impl-content .impl-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .impl-content .impl-desc {
+      font-size: 0.85rem;
+      color: #6b7280;
+    }
+
+    /* ===== Footer ===== */
+    .overview-footer {
+      margin-top: 3rem;
+      padding-top: 1rem;
+      border-top: 1px solid #e5e7eb;
+      font-size: 0.8rem;
+      color: #9ca3af;
+      text-align: center;
+    }
+
+    /* ===== Print Styles ===== */
+    @media print {
+      body { padding: 0; max-width: 100%; font-size: 11pt; }
+      h2 { page-break-after: avoid; }
+      .matrix-table, .strategy-item, .impl-item { page-break-inside: avoid; }
+      .journey-container { page-break-inside: avoid; }
+      .overview-footer { position: fixed; bottom: 0; width: 100%; }
+
+      .stage-bg-aq { background-color: #dcfce7 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .stage-bg-ac { background-color: #dbeafe !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .stage-bg-rv { background-color: #fef9c3 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .stage-bg-rt { background-color: #ffedd5 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .stage-bg-rf { background-color: #f3e8ff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .stage-bg-tx { background-color: #f3f4f6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== HEADER ===== -->
+  <header class="overview-header">
+    <h1>{{PROJECT_NAME}}</h1>
+    <p class="subtitle">Lifecycle Messaging Overview</p>
+    <p class="meta">Generated {{GENERATED_AT}} &middot; {{TOTAL_MESSAGES}} messages across {{TOTAL_CHANNELS}} channels</p>
+  </header>
+
+  <!-- ===== COMPANY OVERVIEW ===== -->
+  <section>
+    <h2>Company Overview</h2>
+    <div class="company-grid">
+      <div class="company-item">
+        <div class="label">Product</div>
+        <div class="value">{{COMPANY_NAME}}</div>
+      </div>
+      <div class="company-item">
+        <div class="label">Product Type</div>
+        <div class="value">{{PRODUCT_TYPE}}</div>
+      </div>
+      <div class="company-item">
+        <div class="label">Target Audience</div>
+        <div class="value">{{TARGET_AUDIENCE}}</div>
+      </div>
+      <div class="company-item">
+        <div class="label">Key Value Proposition</div>
+        <div class="value">{{KEY_VALUE_PROP}}</div>
+      </div>
+      <div class="company-item">
+        <div class="label">Aha Moment</div>
+        <div class="value">{{AHA_MOMENT}}</div>
+      </div>
+      <div class="company-item">
+        <div class="label">Pricing Model</div>
+        <div class="value">{{PRICING_MODEL}}</div>
+      </div>
+    </div>
+    <div class="company-item" style="margin-bottom: 0;">
+      <div class="label">Key Features</div>
+      <div class="value">{{KEY_FEATURES}}</div>
+    </div>
+  </section>
+
+  <!-- ===== AARRR STRATEGY ===== -->
+  <section>
+    <h2>AARRR Strategy Summary</h2>
+    <ul class="strategy-list">
+      <li class="strategy-item">
+        <div class="strategy-badge stage-bg-tx stage-tx">TX</div>
+        <div class="strategy-content">
+          <div class="stage-name">Transactional</div>
+          <div class="stage-desc">{{STRATEGY_TX}}</div>
+        </div>
+      </li>
+      <li class="strategy-item">
+        <div class="strategy-badge stage-bg-aq stage-aq">AQ</div>
+        <div class="strategy-content">
+          <div class="stage-name">Acquisition</div>
+          <div class="stage-desc">{{STRATEGY_AQ}}</div>
+        </div>
+      </li>
+      <li class="strategy-item">
+        <div class="strategy-badge stage-bg-ac stage-ac">AC</div>
+        <div class="strategy-content">
+          <div class="stage-name">Activation</div>
+          <div class="stage-desc">{{STRATEGY_AC}}</div>
+        </div>
+      </li>
+      <li class="strategy-item">
+        <div class="strategy-badge stage-bg-rv stage-rv">RV</div>
+        <div class="strategy-content">
+          <div class="stage-name">Revenue</div>
+          <div class="stage-desc">{{STRATEGY_RV}}</div>
+        </div>
+      </li>
+      <li class="strategy-item">
+        <div class="strategy-badge stage-bg-rt stage-rt">RT</div>
+        <div class="strategy-content">
+          <div class="stage-name">Retention</div>
+          <div class="stage-desc">{{STRATEGY_RT}}</div>
+        </div>
+      </li>
+      <li class="strategy-item">
+        <div class="strategy-badge stage-bg-rf stage-rf">RF</div>
+        <div class="strategy-content">
+          <div class="stage-name">Referral</div>
+          <div class="stage-desc">{{STRATEGY_RF}}</div>
+        </div>
+      </li>
+    </ul>
+  </section>
+
+  <!-- ===== CONDENSED MATRIX ===== -->
+  <section>
+    <h2>Message Matrix</h2>
+
+    <h3 class="stage-tx">Transactional Messages</h3>
+    <table class="matrix-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Trigger</th>
+          <th>Channels</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{MATRIX_TX_ROWS}}
+        <!-- Example (replaced by lib/html.ts):
+        <tr>
+          <td class="id-cell">TX-01</td>
+          <td>Verify your email</td>
+          <td>user.signed_up</td>
+          <td class="channels-cell">email</td>
+        </tr>
+        -->
+      </tbody>
+    </table>
+
+    <h3 class="stage-aq">Acquisition</h3>
+    <table class="matrix-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Trigger</th>
+          <th>Wait</th>
+          <th>Channels</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{MATRIX_AQ_ROWS}}
+      </tbody>
+    </table>
+
+    <h3 class="stage-ac">Activation</h3>
+    <table class="matrix-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Trigger</th>
+          <th>Wait</th>
+          <th>Channels</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{MATRIX_AC_ROWS}}
+      </tbody>
+    </table>
+
+    <h3 class="stage-rv">Revenue</h3>
+    <table class="matrix-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Trigger</th>
+          <th>Wait</th>
+          <th>Channels</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{MATRIX_RV_ROWS}}
+      </tbody>
+    </table>
+
+    <h3 class="stage-rt">Retention</h3>
+    <table class="matrix-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Trigger</th>
+          <th>Wait</th>
+          <th>Channels</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{MATRIX_RT_ROWS}}
+      </tbody>
+    </table>
+
+    <h3 class="stage-rf">Referral</h3>
+    <table class="matrix-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Trigger</th>
+          <th>Wait</th>
+          <th>Channels</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{MATRIX_RF_ROWS}}
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ===== JOURNEY MAP ===== -->
+  <section>
+    <h2>Customer Journey</h2>
+    <div class="journey-container">
+      <div class="mermaid">
+{{MERMAID_DIAGRAM}}
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== MESSAGE INVENTORY ===== -->
+  <section>
+    <h2>Message Inventory</h2>
+    <div class="inventory-grid">
+      <div class="inventory-card">
+        <div class="card-title">By Stage</div>
+        <div class="inventory-row"><span>Transactional</span><span class="count">{{COUNT_TX}}</span></div>
+        <div class="inventory-row"><span>Acquisition</span><span class="count">{{COUNT_AQ}}</span></div>
+        <div class="inventory-row"><span>Activation</span><span class="count">{{COUNT_AC}}</span></div>
+        <div class="inventory-row"><span>Revenue</span><span class="count">{{COUNT_RV}}</span></div>
+        <div class="inventory-row"><span>Retention</span><span class="count">{{COUNT_RT}}</span></div>
+        <div class="inventory-row"><span>Referral</span><span class="count">{{COUNT_RF}}</span></div>
+        <div class="inventory-row" style="border-top: 2px solid #e5e7eb; margin-top: 0.25rem; padding-top: 0.5rem;">
+          <span style="font-weight: 600;">Total</span><span class="count">{{TOTAL_MESSAGES}}</span>
+        </div>
+      </div>
+      <div class="inventory-card">
+        <div class="card-title">By Channel</div>
+        {{CHANNEL_INVENTORY}}
+        <!-- Example (replaced by lib/html.ts):
+        <div class="inventory-row"><span>email</span><span class="count">18</span></div>
+        <div class="inventory-row"><span>in-app</span><span class="count">6</span></div>
+        -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== TAG SUMMARY ===== -->
+  <section>
+    <h2>Tag Summary</h2>
+    <div class="tag-list">
+      {{TAG_SUMMARY}}
+      <!-- Example (replaced by lib/html.ts):
+      <span class="tag-item">type:educational (8)</span>
+      <span class="tag-item">type:promotional (5)</span>
+      -->
+    </div>
+  </section>
+
+  <!-- ===== RECOMMENDED IMPLEMENTATION ORDER ===== -->
+  <section>
+    <h2>Recommended Implementation Order</h2>
+    <ol class="impl-list">
+      {{IMPLEMENTATION_ORDER}}
+      <!-- Example (replaced by lib/html.ts):
+      <li class="impl-item">
+        <div class="impl-content">
+          <div class="impl-title">Transactional Messages (TX-01 through TX-03)</div>
+          <div class="impl-desc">These are mandatory and expected by users. Set them up first.</div>
+        </div>
+      </li>
+      <li class="impl-item">
+        <div class="impl-content">
+          <div class="impl-title">Welcome &amp; Getting Started (AQ-01, AQ-02)</div>
+          <div class="impl-desc">First impressions matter. Get your onboarding right.</div>
+        </div>
+      </li>
+      -->
+    </ol>
+  </section>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="overview-footer">
+    Generated by Mango Lollipop &middot; {{GENERATED_AT}}
+  </footer>
+
+  <!-- ===== Mermaid Init ===== -->
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+  </script>
+
+</body>
+</html>

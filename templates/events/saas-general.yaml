@@ -1,0 +1,38 @@
+# Generic SaaS Event Taxonomy
+# Default events applicable to most SaaS products.
+# Template variables (e.g. {key_feature}) are replaced during generation.
+
+identity:
+  - user.signed_up
+  - user.email_verified
+  - user.profile_completed
+  - user.invited_teammate
+
+activation:
+  - feature.{key_feature}_used_first_time
+  - onboarding.step_completed
+  - onboarding.completed
+  - project.created
+  - project.completed
+
+engagement:
+  - session.started
+  - feature.{feature_name}_used
+  - content.shared
+  - collaboration.started
+
+conversion:
+  - trial.started
+  - trial.ending_soon        # 3 days before expiry
+  - trial.expired
+  - subscription.created
+  - subscription.upgraded
+  - subscription.downgraded
+  - subscription.cancelled
+
+retention:
+  - user.inactive_3_days
+  - user.inactive_7_days
+  - user.inactive_14_days
+  - usage.weekly_summary
+  - milestone.reached

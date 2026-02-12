@@ -1,0 +1,44 @@
+# Document Tool Event Taxonomy
+# For tools like PandaDoc, DocuSign, Notion, etc.
+# Extends the general SaaS taxonomy with document workflow events.
+
+identity:
+  - user.signed_up
+  - user.email_verified
+  - user.profile_completed
+  - user.invited_teammate
+
+documents:
+  - document.created
+  - document.edited
+  - document.sent
+  - document.viewed
+  - document.signed
+  - document.completed
+  - document.expired
+
+templates:
+  - template.created
+  - template.used
+  - template.shared
+
+workflows:
+  - approval.requested
+  - approval.completed
+  - payment.collected
+
+conversion:
+  - trial.started
+  - trial.ending_soon
+  - trial.expired
+  - subscription.created
+  - subscription.upgraded
+  - subscription.downgraded
+  - subscription.cancelled
+
+retention:
+  - user.inactive_3_days
+  - user.inactive_7_days
+  - user.inactive_14_days
+  - usage.weekly_summary
+  - milestone.reached

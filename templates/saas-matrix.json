@@ -1,0 +1,172 @@
+{
+  "template": "saas-general",
+  "transactional": [
+    {
+      "pattern": "email-verification",
+      "id": "TX-01",
+      "name": "Verify your email",
+      "trigger": { "event": "user.signed_up", "type": "event" },
+      "wait": "P0D",
+      "channels": ["email"],
+      "tags": ["type:transactional"],
+      "required": true
+    },
+    {
+      "pattern": "password-reset",
+      "id": "TX-02",
+      "name": "Password reset",
+      "trigger": { "event": "user.password_reset_requested", "type": "event" },
+      "wait": "P0D",
+      "channels": ["email"],
+      "tags": ["type:transactional"],
+      "required": true
+    },
+    {
+      "pattern": "payment-receipt",
+      "id": "TX-03",
+      "name": "Payment receipt",
+      "trigger": { "event": "subscription.payment_processed", "type": "event" },
+      "wait": "P0D",
+      "channels": ["email"],
+      "tags": ["type:transactional"],
+      "required": true
+    }
+  ],
+  "stages": {
+    "acquisition": {
+      "messages": [
+        {
+          "pattern": "welcome",
+          "name": "Welcome to {product}",
+          "trigger": { "event": "user.email_verified", "type": "event" },
+          "wait": "PT5M",
+          "channels": ["email"],
+          "tags": ["type:educational"],
+          "required": true,
+          "notes": "USP summary, quick-start CTA, support info"
+        }
+      ]
+    },
+    "activation": {
+      "strategy": "feature-drip",
+      "notes": "One feature per message. Suppress if already used.",
+      "messages": [
+        {
+          "pattern": "feature-highlight",
+          "wait": "P2D",
+          "feature_slot": 1,
+          "channels": ["email"],
+          "tags": ["type:educational"],
+          "format": "plain",
+          "suppressions": [{ "expression": "feature.{slot}_used == true" }]
+        },
+        {
+          "pattern": "feature-highlight",
+          "wait": "P3D",
+          "feature_slot": 2,
+          "channels": ["email"],
+          "tags": ["type:educational"],
+          "format": "plain",
+          "suppressions": [{ "expression": "feature.{slot}_used == true" }]
+        },
+        {
+          "pattern": "feature-highlight",
+          "wait": "P5D",
+          "feature_slot": 3,
+          "channels": ["email", "in-app"],
+          "tags": ["type:educational"]
+        },
+        {
+          "pattern": "feature-highlight",
+          "wait": "P7D",
+          "feature_slot": 4,
+          "channels": ["email"],
+          "tags": ["type:educational"]
+        },
+        {
+          "pattern": "feature-highlight",
+          "wait": "P14D",
+          "feature_slot": 5,
+          "channels": ["email"],
+          "tags": ["type:educational"]
+        }
+      ]
+    },
+    "revenue": {
+      "messages": [
+        {
+          "pattern": "trial-ending",
+          "trigger": { "event": "trial.ending_soon", "type": "event" },
+          "wait": "P0D",
+          "channels": ["email", "in-app"],
+          "tags": ["type:promotional", "segment:trial"],
+          "guards": [{ "expression": "user.plan == 'trial'" }]
+        },
+        {
+          "pattern": "trial-expired",
+          "trigger": { "event": "trial.expired", "type": "event" },
+          "wait": "P0D",
+          "channels": ["email"],
+          "tags": ["type:promotional", "segment:trial"]
+        },
+        {
+          "pattern": "usage-limit",
+          "trigger": { "event": "usage.limit_approaching", "type": "event" },
+          "wait": "P0D",
+          "channels": ["in-app", "email"],
+          "tags": ["type:behavioral"]
+        }
+      ]
+    },
+    "retention": {
+      "messages": [
+        {
+          "pattern": "usage-recap",
+          "trigger": { "event": "scheduled", "type": "scheduled", "schedule": "every friday 9am" },
+          "wait": "P0D",
+          "channels": ["email"],
+          "tags": ["type:behavioral"]
+        },
+        {
+          "pattern": "re-engagement-soft",
+          "trigger": { "event": "user.inactive_3_days", "type": "behavioral" },
+          "wait": "P0D",
+          "channels": ["push", "email"],
+          "tags": ["type:behavioral", "segment:dormant"]
+        },
+        {
+          "pattern": "re-engagement-medium",
+          "trigger": { "event": "user.inactive_7_days", "type": "behavioral" },
+          "wait": "P0D",
+          "channels": ["email"],
+          "tags": ["type:behavioral", "segment:dormant"]
+        },
+        {
+          "pattern": "re-engagement-breakup",
+          "trigger": { "event": "user.inactive_14_days", "type": "behavioral" },
+          "wait": "P0D",
+          "channels": ["email"],
+          "tags": ["type:behavioral", "segment:churning", "priority:high"]
+        }
+      ]
+    },
+    "referral": {
+      "messages": [
+        {
+          "pattern": "invite-team",
+          "trigger": { "event": "milestone.first_success", "type": "event" },
+          "wait": "P1D",
+          "channels": ["in-app", "email"],
+          "tags": ["type:promotional"]
+        },
+        {
+          "pattern": "referral-program",
+          "trigger": { "event": "user.active_30_days", "type": "behavioral" },
+          "wait": "P0D",
+          "channels": ["email"],
+          "tags": ["type:promotional"]
+        }
+      ]
+    }
+  }
+}

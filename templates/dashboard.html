@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{PROJECT_NAME}} — Mango Lollipop Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            mango: { 50: '#fff8ed', 100: '#ffefcf', 200: '#ffdb9e', 300: '#ffc162', 400: '#ffa033', 500: '#ff850c', 600: '#f06a02', 700: '#c74f08', 800: '#9e3f0f', 900: '#7f3510' },
+            stage: {
+              tx: '#6b7280',
+              aq: '#22c55e',
+              ac: '#3b82f6',
+              rv: '#eab308',
+              rt: '#f97316',
+              rf: '#a855f7',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .stage-badge-TX { background-color: #f3f4f6; color: #374151; }
+    .stage-badge-AQ { background-color: #dcfce7; color: #166534; }
+    .stage-badge-AC { background-color: #dbeafe; color: #1e40af; }
+    .stage-badge-RV { background-color: #fef9c3; color: #854d0e; }
+    .stage-badge-RT { background-color: #ffedd5; color: #9a3412; }
+    .stage-badge-RF { background-color: #f3e8ff; color: #6b21a8; }
+
+    .channel-icon { display: inline-block; margin-right: 2px; font-size: 0.75rem; }
+
+    .tag-pill { cursor: pointer; transition: all 0.15s; }
+    .tag-pill:hover { opacity: 0.8; transform: scale(1.05); }
+    .tag-pill.active { ring: 2px; box-shadow: 0 0 0 2px #ff850c; }
+
+    .matrix-row { cursor: pointer; transition: background-color 0.1s; }
+    .matrix-row:hover { background-color: #f9fafb; }
+    .matrix-row.expanded { background-color: #fffbeb; }
+
+    .expand-panel { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+    .expand-panel.open { max-height: 600px; }
+
+    .sort-header { cursor: pointer; user-select: none; }
+    .sort-header:hover { color: #ff850c; }
+    .sort-indicator { font-size: 0.6rem; margin-left: 4px; }
+
+    .view-toggle button { transition: all 0.15s; }
+    .view-toggle button.active { background-color: #1f2937; color: white; }
+    .view-toggle button:not(.active) { background-color: #f3f4f6; color: #374151; }
+
+    .mermaid { max-width: 100%; overflow-x: auto; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen">
+
+  <!-- ===== HEADER ===== -->
+  <header class="bg-gray-900 text-white">
+    <div class="max-w-screen-2xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <h1 class="text-xl font-bold tracking-tight">{{PROJECT_NAME}}</h1>
+        <span class="text-gray-400 text-sm">Mango Lollipop</span>
+      </div>
+      <div class="flex items-center gap-6 text-sm">
+        <div class="text-center">
+          <div class="text-2xl font-bold text-white">{{TOTAL_MESSAGES}}</div>
+          <div class="text-gray-400">Messages</div>
+        </div>
+        <div class="text-center">
+          <div class="text-2xl font-bold text-white">{{TOTAL_CHANNELS}}</div>
+          <div class="text-gray-400">Channels</div>
+        </div>
+        <div class="text-center">
+          <div class="text-2xl font-bold text-white">{{TOTAL_TAGS}}</div>
+          <div class="text-gray-400">Tags</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stage stat bar -->
+    <div class="bg-gray-800">
+      <div class="max-w-screen-2xl mx-auto px-6 py-2 flex items-center gap-4 text-sm overflow-x-auto">
+        <button onclick="filterStage('all')" class="stage-filter px-3 py-1 rounded-full bg-gray-700 text-gray-300 hover:bg-gray-600 whitespace-nowrap" data-stage="all">
+          All
+        </button>
+        <button onclick="filterStage('TX')" class="stage-filter px-3 py-1 rounded-full stage-badge-TX hover:opacity-80 whitespace-nowrap" data-stage="TX">
+          TX: {{COUNT_TX}}
+        </button>
+        <button onclick="filterStage('AQ')" class="stage-filter px-3 py-1 rounded-full stage-badge-AQ hover:opacity-80 whitespace-nowrap" data-stage="AQ">
+          Acquisition: {{COUNT_AQ}}
+        </button>
+        <button onclick="filterStage('AC')" class="stage-filter px-3 py-1 rounded-full stage-badge-AC hover:opacity-80 whitespace-nowrap" data-stage="AC">
+          Activation: {{COUNT_AC}}
+        </button>
+        <button onclick="filterStage('RV')" class="stage-filter px-3 py-1 rounded-full stage-badge-RV hover:opacity-80 whitespace-nowrap" data-stage="RV">
+          Revenue: {{COUNT_RV}}
+        </button>
+        <button onclick="filterStage('RT')" class="stage-filter px-3 py-1 rounded-full stage-badge-RT hover:opacity-80 whitespace-nowrap" data-stage="RT">
+          Retention: {{COUNT_RT}}
+        </button>
+        <button onclick="filterStage('RF')" class="stage-filter px-3 py-1 rounded-full stage-badge-RF hover:opacity-80 whitespace-nowrap" data-stage="RF">
+          Referral: {{COUNT_RF}}
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== MAIN LAYOUT ===== -->
+  <div class="max-w-screen-2xl mx-auto flex">
+
+    <!-- ===== SIDEBAR: Tags ===== -->
+    <aside class="w-64 shrink-0 bg-white border-r border-gray-200 p-4 min-h-screen hidden lg:block">
+      <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Filter by Tag</h2>
+      <div class="space-y-1" id="tag-sidebar">
+        {{TAG_FILTERS}}
+        <!-- Example tag items (replaced by lib/html.ts):
+        <button class="tag-pill w-full text-left text-sm px-3 py-1.5 rounded hover:bg-gray-100 flex justify-between items-center" data-tag="type:educational" onclick="toggleTag(this)">
+          <span>type:educational</span>
+          <span class="text-gray-400 text-xs">8</span>
+        </button>
+        -->
+      </div>
+      <hr class="my-4 border-gray-200">
+      <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Channels</h2>
+      <div class="space-y-1" id="channel-sidebar">
+        {{CHANNEL_FILTERS}}
+        <!-- Example channel items (replaced by lib/html.ts):
+        <button class="tag-pill w-full text-left text-sm px-3 py-1.5 rounded hover:bg-gray-100 flex justify-between items-center" data-channel="email" onclick="toggleChannel(this)">
+          <span>email</span>
+          <span class="text-gray-400 text-xs">18</span>
+        </button>
+        -->
+      </div>
+      <hr class="my-4 border-gray-200">
+      <button onclick="clearFilters()" class="w-full text-sm text-gray-500 hover:text-gray-900 py-1.5">Clear all filters</button>
+    </aside>
+
+    <!-- ===== CONTENT ===== -->
+    <main class="flex-1 p-6 space-y-8 min-w-0">
+
+      <!-- View Toggle -->
+      <div class="flex items-center justify-between">
+        <div class="view-toggle flex gap-1 rounded-lg overflow-hidden border border-gray-200">
+          <button class="active px-4 py-2 text-sm font-medium" onclick="setView('lifecycle', this)">Lifecycle</button>
+          <button class="px-4 py-2 text-sm font-medium" onclick="setView('transactional', this)">Transactional</button>
+          <button class="px-4 py-2 text-sm font-medium" onclick="setView('all', this)">All</button>
+        </div>
+        <div class="text-sm text-gray-500">
+          Showing <span id="visible-count">{{TOTAL_MESSAGES}}</span> of {{TOTAL_MESSAGES}} messages
+        </div>
+      </div>
+
+      <!-- ===== JOURNEY MAP ===== -->
+      <section>
+        <h2 class="text-lg font-semibold text-gray-900 mb-3">Customer Journey</h2>
+        <div class="bg-white rounded-xl border border-gray-200 p-6 overflow-x-auto">
+          <div class="mermaid">
+{{MERMAID_DIAGRAM}}
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== MATRIX TABLE ===== -->
+      <section>
+        <h2 class="text-lg font-semibold text-gray-900 mb-3">Message Matrix</h2>
+        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm" id="matrix-table">
+              <thead>
+                <tr class="bg-gray-50 border-b border-gray-200 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th class="sort-header px-4 py-3" data-sort="id" onclick="sortTable('id', this)">
+                    ID<span class="sort-indicator"></span>
+                  </th>
+                  <th class="sort-header px-4 py-3" data-sort="stage" onclick="sortTable('stage', this)">
+                    Stage<span class="sort-indicator"></span>
+                  </th>
+                  <th class="sort-header px-4 py-3" data-sort="name" onclick="sortTable('name', this)">
+                    Name<span class="sort-indicator"></span>
+                  </th>
+                  <th class="sort-header px-4 py-3" data-sort="trigger" onclick="sortTable('trigger', this)">
+                    Trigger<span class="sort-indicator"></span>
+                  </th>
+                  <th class="sort-header px-4 py-3" data-sort="wait" onclick="sortTable('wait', this)">
+                    Wait<span class="sort-indicator"></span>
+                  </th>
+                  <th class="px-4 py-3">Channels</th>
+                  <th class="px-4 py-3">CTA</th>
+                  <th class="px-4 py-3">Tags</th>
+                </tr>
+              </thead>
+              <tbody id="matrix-body">
+                {{MATRIX_ROWS}}
+                <!-- Example row (replaced by lib/html.ts):
+                <tr class="matrix-row border-b border-gray-100" data-id="AQ-01" data-stage="AQ" data-classification="lifecycle" data-tags="type:educational" data-channels="email" onclick="toggleExpand(this)">
+                  <td class="px-4 py-3 font-mono text-xs font-medium">AQ-01</td>
+                  <td class="px-4 py-3"><span class="stage-badge-AQ text-xs font-medium px-2 py-0.5 rounded-full">AQ</span></td>
+                  <td class="px-4 py-3 font-medium">Welcome to {product}</td>
+                  <td class="px-4 py-3 text-gray-600 font-mono text-xs">user.email_verified</td>
+                  <td class="px-4 py-3 text-gray-600 font-mono text-xs">PT5M</td>
+                  <td class="px-4 py-3 text-gray-600">email</td>
+                  <td class="px-4 py-3 text-gray-600">Try {feature}</td>
+                  <td class="px-4 py-3"><span class="inline-block text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">type:educational</span></td>
+                </tr>
+                <tr class="expand-row hidden" data-expand-for="AQ-01">
+                  <td colspan="8" class="px-4 py-0">
+                    <div class="expand-panel">
+                      <div class="py-4 grid grid-cols-2 gap-4 text-sm">
+                        <div><span class="font-semibold text-gray-500">Subject:</span> Welcome!</div>
+                        <div><span class="font-semibold text-gray-500">From:</span> CEO</div>
+                        <div><span class="font-semibold text-gray-500">Segment:</span> Everyone</div>
+                        <div><span class="font-semibold text-gray-500">Format:</span> rich</div>
+                        <div class="col-span-2"><span class="font-semibold text-gray-500">Goal:</span> Onboarding start</div>
+                        <div class="col-span-2"><span class="font-semibold text-gray-500">Guards:</span> None</div>
+                        <div class="col-span-2"><span class="font-semibold text-gray-500">Suppressions:</span> None</div>
+                        <div class="col-span-2"><span class="font-semibold text-gray-500">Body Preview:</span><p class="mt-1 text-gray-600 bg-gray-50 p-3 rounded">...</p></div>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== STATS ===== -->
+      <section>
+        <h2 class="text-lg font-semibold text-gray-900 mb-3">Statistics</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+          <!-- Messages per Stage -->
+          <div class="bg-white rounded-xl border border-gray-200 p-5">
+            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Messages per Stage</h3>
+            <div class="space-y-2">
+              <div class="flex items-center gap-2">
+                <span class="w-20 text-xs font-medium text-gray-500">TX</span>
+                <div class="flex-1 bg-gray-100 rounded-full h-4 overflow-hidden">
+                  <div class="bg-stage-tx h-full rounded-full" style="width: {{PERCENT_TX}}%"></div>
+                </div>
+                <span class="text-xs text-gray-500 w-6 text-right">{{COUNT_TX}}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="w-20 text-xs font-medium text-gray-500">Acquisition</span>
+                <div class="flex-1 bg-gray-100 rounded-full h-4 overflow-hidden">
+                  <div class="bg-stage-aq h-full rounded-full" style="width: {{PERCENT_AQ}}%"></div>
+                </div>
+                <span class="text-xs text-gray-500 w-6 text-right">{{COUNT_AQ}}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="w-20 text-xs font-medium text-gray-500">Activation</span>
+                <div class="flex-1 bg-gray-100 rounded-full h-4 overflow-hidden">
+                  <div class="bg-stage-ac h-full rounded-full" style="width: {{PERCENT_AC}}%"></div>
+                </div>
+                <span class="text-xs text-gray-500 w-6 text-right">{{COUNT_AC}}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="w-20 text-xs font-medium text-gray-500">Revenue</span>
+                <div class="flex-1 bg-gray-100 rounded-full h-4 overflow-hidden">
+                  <div class="bg-stage-rv h-full rounded-full" style="width: {{PERCENT_RV}}%"></div>
+                </div>
+                <span class="text-xs text-gray-500 w-6 text-right">{{COUNT_RV}}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="w-20 text-xs font-medium text-gray-500">Retention</span>
+                <div class="flex-1 bg-gray-100 rounded-full h-4 overflow-hidden">
+                  <div class="bg-stage-rt h-full rounded-full" style="width: {{PERCENT_RT}}%"></div>
+                </div>
+                <span class="text-xs text-gray-500 w-6 text-right">{{COUNT_RT}}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="w-20 text-xs font-medium text-gray-500">Referral</span>
+                <div class="flex-1 bg-gray-100 rounded-full h-4 overflow-hidden">
+                  <div class="bg-stage-rf h-full rounded-full" style="width: {{PERCENT_RF}}%"></div>
+                </div>
+                <span class="text-xs text-gray-500 w-6 text-right">{{COUNT_RF}}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Channel Distribution -->
+          <div class="bg-white rounded-xl border border-gray-200 p-5">
+            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Channel Distribution</h3>
+            <div class="space-y-3" id="channel-stats">
+              {{CHANNEL_STATS}}
+              <!-- Example (replaced by lib/html.ts):
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-700">email</span>
+                <span class="text-sm font-semibold text-gray-900">18</span>
+              </div>
+              -->
+            </div>
+          </div>
+
+          <!-- Tag Cloud -->
+          <div class="bg-white rounded-xl border border-gray-200 p-5">
+            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Tag Cloud</h3>
+            <div class="flex flex-wrap gap-1.5" id="tag-cloud">
+              {{TAG_CLOUD}}
+              <!-- Example (replaced by lib/html.ts):
+              <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">type:educational (8)</span>
+              -->
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="bg-gray-100 border-t border-gray-200 text-center py-4 text-xs text-gray-500">
+    Generated by Mango Lollipop &middot; {{GENERATED_AT}}
+  </footer>
+
+  <!-- ===== PROJECT DATA (injected by lib/html.ts) ===== -->
+  <script id="project-data" type="application/json">
+{{PROJECT_DATA}}
+  </script>
+
+  <!-- ===== INTERACTIVE JS ===== -->
+  <script>
+    // Initialize Mermaid
+    mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+
+    // State
+    let currentView = 'lifecycle'; // 'lifecycle' | 'transactional' | 'all'
+    let activeStage = 'all';
+    let activeTags = new Set();
+    let activeChannels = new Set();
+    let sortColumn = null;
+    let sortAsc = true;
+
+    // Load project data
+    let projectData = {};
+    try {
+      const dataEl = document.getElementById('project-data');
+      if (dataEl && dataEl.textContent.trim()) {
+        projectData = JSON.parse(dataEl.textContent);
+      }
+    } catch (e) {
+      console.warn('Could not parse project data:', e);
+    }
+
+    // --- View Toggle ---
+    function setView(view, btn) {
+      currentView = view;
+      document.querySelectorAll('.view-toggle button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      applyFilters();
+    }
+
+    // --- Stage Filter ---
+    function filterStage(stage) {
+      activeStage = stage;
+      document.querySelectorAll('.stage-filter').forEach(btn => {
+        btn.classList.toggle('ring-2', btn.dataset.stage === stage);
+        btn.classList.toggle('ring-mango-500', btn.dataset.stage === stage);
+      });
+      applyFilters();
+    }
+
+    // --- Tag Filter ---
+    function toggleTag(el) {
+      const tag = el.dataset.tag;
+      if (activeTags.has(tag)) {
+        activeTags.delete(tag);
+        el.classList.remove('active', 'bg-mango-50');
+      } else {
+        activeTags.add(tag);
+        el.classList.add('active', 'bg-mango-50');
+      }
+      applyFilters();
+    }
+
+    // --- Channel Filter ---
+    function toggleChannel(el) {
+      const channel = el.dataset.channel;
+      if (activeChannels.has(channel)) {
+        activeChannels.delete(channel);
+        el.classList.remove('active', 'bg-mango-50');
+      } else {
+        activeChannels.add(channel);
+        el.classList.add('active', 'bg-mango-50');
+      }
+      applyFilters();
+    }
+
+    // --- Clear Filters ---
+    function clearFilters() {
+      activeTags.clear();
+      activeChannels.clear();
+      activeStage = 'all';
+      currentView = 'lifecycle';
+
+      document.querySelectorAll('.tag-pill').forEach(el => el.classList.remove('active', 'bg-mango-50'));
+      document.querySelectorAll('.stage-filter').forEach(el => {
+        el.classList.remove('ring-2', 'ring-mango-500');
+      });
+      document.querySelectorAll('.view-toggle button').forEach((btn, i) => {
+        btn.classList.toggle('active', i === 0);
+      });
+
+      applyFilters();
+    }
+
+    // --- Apply All Filters ---
+    function applyFilters() {
+      const rows = document.querySelectorAll('#matrix-body .matrix-row');
+      let visibleCount = 0;
+
+      rows.forEach(row => {
+        const classification = row.dataset.classification;
+        const stage = row.dataset.stage;
+        const rowTags = (row.dataset.tags || '').split(',').filter(Boolean);
+        const rowChannels = (row.dataset.channels || '').split(',').filter(Boolean);
+        const expandRow = row.nextElementSibling;
+
+        let visible = true;
+
+        // View filter
+        if (currentView === 'lifecycle' && classification === 'transactional') visible = false;
+        if (currentView === 'transactional' && classification === 'lifecycle') visible = false;
+
+        // Stage filter
+        if (activeStage !== 'all' && stage !== activeStage) visible = false;
+
+        // Tag filter (must match ALL active tags)
+        if (activeTags.size > 0) {
+          for (const tag of activeTags) {
+            if (!rowTags.includes(tag)) { visible = false; break; }
+          }
+        }
+
+        // Channel filter (must match ANY active channel)
+        if (activeChannels.size > 0) {
+          const hasChannel = rowChannels.some(ch => activeChannels.has(ch));
+          if (!hasChannel) visible = false;
+        }
+
+        row.style.display = visible ? '' : 'none';
+        if (expandRow && expandRow.classList.contains('expand-row')) {
+          expandRow.style.display = visible ? '' : 'none';
+        }
+
+        if (visible) visibleCount++;
+      });
+
+      const countEl = document.getElementById('visible-count');
+      if (countEl) countEl.textContent = visibleCount;
+    }
+
+    // --- Expand/Collapse Row ---
+    function toggleExpand(row) {
+      const expandRow = row.nextElementSibling;
+      if (!expandRow || !expandRow.classList.contains('expand-row')) return;
+
+      const panel = expandRow.querySelector('.expand-panel');
+      const isOpen = panel.classList.contains('open');
+
+      // Close all
+      document.querySelectorAll('.expand-panel.open').forEach(p => p.classList.remove('open'));
+      document.querySelectorAll('.matrix-row.expanded').forEach(r => r.classList.remove('expanded'));
+
+      // Toggle this one
+      if (!isOpen) {
+        panel.classList.add('open');
+        row.classList.add('expanded');
+      }
+    }
+
+    // --- Sort Table ---
+    function sortTable(column, headerEl) {
+      if (sortColumn === column) {
+        sortAsc = !sortAsc;
+      } else {
+        sortColumn = column;
+        sortAsc = true;
+      }
+
+      // Update indicators
+      document.querySelectorAll('.sort-indicator').forEach(el => el.textContent = '');
+      const indicator = headerEl.querySelector('.sort-indicator');
+      indicator.textContent = sortAsc ? ' \u25B2' : ' \u25BC';
+
+      // Sort rows
+      const tbody = document.getElementById('matrix-body');
+      const rowPairs = [];
+      const rows = Array.from(tbody.children);
+
+      for (let i = 0; i < rows.length; i++) {
+        if (rows[i].classList.contains('matrix-row')) {
+          rowPairs.push({ main: rows[i], expand: rows[i + 1]?.classList.contains('expand-row') ? rows[i + 1] : null });
+          if (rows[i + 1]?.classList.contains('expand-row')) i++;
+        }
+      }
+
+      rowPairs.sort((a, b) => {
+        const colMap = { id: 0, stage: 1, name: 2, trigger: 3, wait: 4 };
+        const idx = colMap[column] || 0;
+        const aVal = a.main.children[idx]?.textContent?.trim() || '';
+        const bVal = b.main.children[idx]?.textContent?.trim() || '';
+        const cmp = aVal.localeCompare(bVal, undefined, { numeric: true });
+        return sortAsc ? cmp : -cmp;
+      });
+
+      rowPairs.forEach(pair => {
+        tbody.appendChild(pair.main);
+        if (pair.expand) tbody.appendChild(pair.expand);
+      });
+    }
+  </script>
+
+</body>
+</html>

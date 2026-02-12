@@ -1,0 +1,50 @@
+# Collaboration / Meeting Tool Event Taxonomy
+# For tools like Butter, Zoom, Miro, etc.
+# Extends the general SaaS taxonomy with session and collaboration events.
+
+identity:
+  # Inherits from saas-general
+  - user.signed_up
+  - user.email_verified
+  - user.profile_completed
+  - user.invited_teammate
+
+sessions:
+  - session.created
+  - session.scheduled
+  - session.started
+  - session.ended
+  - session.recorded
+
+collaboration:
+  - participant.joined
+  - participant.invited
+  - breakout.created
+  - breakout.started
+  - poll.created
+  - poll.completed
+  - whiteboard.created
+
+content:
+  - agenda.created
+  - agenda.shared
+  - recording.available
+  - recording.shared
+  - template.created
+  - template.used
+
+conversion:
+  - trial.started
+  - trial.ending_soon
+  - trial.expired
+  - subscription.created
+  - subscription.upgraded
+  - subscription.downgraded
+  - subscription.cancelled
+
+retention:
+  - user.inactive_3_days
+  - user.inactive_7_days
+  - user.inactive_14_days
+  - usage.weekly_summary
+  - milestone.reached
