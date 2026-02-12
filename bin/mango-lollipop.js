@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'fs';
+import { execSync } from 'child_process';
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'fs';
 import { resolve, join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import open from 'open';
@@ -105,7 +106,7 @@ function countBy(arr) {
 program
   .name('mango-lollipop')
   .description('AI-powered lifecycle messaging generator')
-  .version('0.1.0');
+  .version(JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8')).version);
 
 // --- init -------------------------------------------------------------------
 
@@ -113,12 +114,28 @@ program
   .command('init [name]')
   .description('Initialize a new Mango Lollipop project')
   .action((name = 'my-project') => {
-    const dir = resolve(`output/${name}`);
+    const dir = resolve(name);
     mkdirSync(dir, { recursive: true });
 
     // Create message folders per stage
     for (const stage of STAGES) {
       mkdirSync(`${dir}/messages/${stage}`, { recursive: true });
+    }
+
+    // Copy skills, templates, and Claude Code commands from the package
+    const pkgRoot = resolve(__dirname, '..');
+    const toCopy = [
+      ['templates', 'templates'],
+      ['.claude/skills', '.claude/skills'],
+      ['CLAUDE.md', 'CLAUDE.md'],
+    ];
+
+    for (const [src, dest] of toCopy) {
+      const srcPath = join(pkgRoot, src);
+      const destPath = join(dir, dest);
+      if (existsSync(srcPath)) {
+        cpSync(srcPath, destPath, { recursive: true });
+      }
     }
 
     // Create initial config
@@ -137,9 +154,9 @@ program
 
     console.log(`Mango Lollipop project "${name}" initialized at ${dir}`);
     console.log();
-    console.log('Next step: Run the start skill in Claude Code:');
-    console.log(`  cd ${dir}`);
-    console.log('  claude "Read the start skill and help me set up lifecycle messaging"');
+    console.log('Next step:');
+    console.log(`  cd ${name}`);
+    console.log('  /start');
   });
 
 // --- generate ---------------------------------------------------------------
@@ -377,6 +394,43 @@ program
     } else {
       console.log();
       console.log('   No matrix generated yet. Run `mango-lollipop generate` to create one.');
+    }
+  });
+
+// --- update -----------------------------------------------------------------
+
+program
+  .command('update')
+  .description('Update mango-lollipop to the latest version')
+  .action(() => {
+    const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8'));
+    const current = pkg.version;
+
+    let latest;
+    try {
+      latest = execSync('npm view mango-lollipop@latest version', { encoding: 'utf-8' }).trim();
+    } catch {
+      console.log('Could not reach the npm registry. Check your internet connection.');
+      return;
+    }
+
+    if (current === latest) {
+      console.log(`Already on the latest version (${current}).`);
+      return;
+    }
+
+    console.log(`Current version: ${current}`);
+    console.log(`Latest version:  ${latest}`);
+    console.log();
+    console.log('Updating...');
+
+    try {
+      execSync('npm install -g mango-lollipop@latest', { stdio: 'inherit' });
+      console.log();
+      console.log(`Updated to ${latest}.`);
+    } catch {
+      console.log('Update failed. Try running manually:');
+      console.log('  npm install -g mango-lollipop@latest');
     }
   });
 

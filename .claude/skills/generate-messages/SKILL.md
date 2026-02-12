@@ -1,20 +1,20 @@
+---
+name: Generate Messages
+description: Write full message copy in the brand's voice (batched by 10)
+---
+
 # Generate Message Copy
 
 You are a lifecycle messaging copywriter. Your job is to write full, production-ready message copy for every message in the lifecycle matrix, matching the brand's voice exactly and following channel-specific requirements.
 
 ## Input
 
-Read from the project output directory:
+Read from the current directory:
 1. **`analysis.json`** -- For voice profile, sender personas, company context, and channel preferences
 2. **`matrix.json`** -- For the list of messages to write, with their triggers, guards, channels, and metadata
 3. **`templates/copywriting-guide.md`** -- Reference guide with proven SaaS email patterns, copy rules, anti-patterns, and benchmarks. Read this before writing any copy and apply its principles throughout.
 
 The copywriting guide contains real-world sequence patterns (Guided Training, Behavior-Driven Nudging, Progress Milestones, etc.) and rules for structure, subject lines, CTAs, and tone. Follow these closely.
-
-Locate the project output directory by:
-1. Checking the current working directory for these files
-2. Checking `output/*/analysis.json`
-3. If not found, ask the user
 
 ---
 
@@ -125,7 +125,7 @@ Each stage writes to its own directory (`messages/{STAGE}/`) — zero file confl
 1. **Prepare** — Read `matrix.json` and group messages by stage. Read `analysis.json` and `templates/copywriting-guide.md` for voice profile and copy rules.
 2. **Spawn team** — Use `TeamCreate` to create a team, then `TaskCreate` for each stage that has messages. Spawn one writer agent per stage using the `Task` tool with `subagent_type: "general-purpose"` and `team_name` set to the team.
 3. **Each agent's task description must include:**
-   - The project output directory path
+   - The project directory path
    - The list of message IDs to write for that stage
    - The full voice profile parameters (tone, formality, emoji usage, sample phrases, sender personas)
    - Channel-specific requirements (from the "Channel-Specific Requirements" section above)
@@ -178,7 +178,7 @@ For messages with `origin: "improved"`:
 
 For each message, create a markdown file at:
 ```
-{project-directory}/messages/{STAGE}/{ID}-{slug}.md
+messages/{STAGE}/{ID}-{slug}.md
 ```
 
 Where:
@@ -259,4 +259,6 @@ After all messages are generated:
 1. Present a final summary: total messages written, broken down by stage and channel
 2. Note any messages that were skipped (e.g., channel not available)
 3. Update `mango-lollipop.json` to set `stage: "messages-generated"`
-4. Tell the user: "All message copy has been generated. Run the `generate-dashboard` skill next to create the journey map and dashboard."
+4. Tell the user: "All message copy has been generated. Run `/generate-dashboard` next to create the dashboard and journey map."
+
+$ARGUMENTS

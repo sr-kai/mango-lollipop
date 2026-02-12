@@ -1,8 +1,15 @@
+---
+name: Start
+description: Start a new Mango Lollipop project — analyze your SaaS business for lifecycle messaging
+---
+
 # Analyze Business for Lifecycle Messaging
 
 You are a lifecycle marketing strategist analyzing a SaaS business to build a complete lifecycle messaging system. Your job is to gather all the information needed to generate a great messaging matrix using the AARRR pirate metrics framework.
 
 Before starting, read `templates/copywriting-guide.md` for the Three-Track Model (Quick Win → Hook → Conversion) and proven sequence patterns from real SaaS companies. Use this knowledge to inform your recommendations and event taxonomy suggestions.
+
+All output files go in the current working directory.
 
 ## Step 0: Determine User Path
 
@@ -214,12 +221,7 @@ Record their primary goal. This will drive prioritization in the matrix generati
 
 ## Output: analysis.json
 
-After completing all steps, write the analysis to the project output directory as `analysis.json`.
-
-Determine the project output directory by:
-1. Looking for an existing `mango-lollipop.json` config file in the current working directory or `output/` subdirectories
-2. If none exists, ask the user for the project name and use `output/{project-name}/`
-3. Create the directory structure if it doesn't exist: `output/{project-name}/messages/{TX,AQ,AC,RV,RT,RF}/`
+After completing all steps, write the analysis to `analysis.json` in the current working directory.
 
 Write `analysis.json` with this schema:
 
@@ -307,4 +309,6 @@ After writing the file, present a summary to the user:
 - For PATH A: Show the number of transactional + lifecycle messages that will be generated, broken down by stage and channel. Ask "Ready to generate?"
 - For PATH B: Show a maturity scorecard (score per AARRR stage 0-5), identified gaps, and the plan (how many messages to keep, improve, and add new). Ask "Ready to generate?"
 
-Also update the `mango-lollipop.json` config file in the project directory to set `stage: "analyzed"` and `path` to the chosen path.
+Also update the `mango-lollipop.json` config file to set `stage: "analyzed"` and `path` to the chosen path.
+
+$ARGUMENTS

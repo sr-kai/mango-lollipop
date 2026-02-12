@@ -11,7 +11,7 @@ The authoritative spec is `mango-lollipop-spec.md` at the project root. Always c
 ## Architecture
 
 ### Skills-based design
-The core logic lives in Claude Code skills under `skills/`, each with a `SKILL.md`:
+The core logic lives in Claude Code skills under `.claude/skills/`:
 - **start** — Gather business info via dual-path onboarding (fresh vs. existing messaging)
 - **generate-matrix** — Build the AARRR lifecycle matrix from analysis output
 - **generate-messages** — Write full message copy in the brand's voice (batched by 10)
@@ -52,6 +52,7 @@ mango-lollipop audit                 # Audit existing messaging
 mango-lollipop view                  # Open dashboard.html in browser
 mango-lollipop export excel|html|messages
 mango-lollipop status                # Message counts per stage, channel distribution, tags
+mango-lollipop update                # Update to the latest version from npm
 
 ```
 

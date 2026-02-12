@@ -1,3 +1,8 @@
+---
+name: Audit
+description: Deep analysis of existing lifecycle messaging with maturity scorecard
+---
+
 # Audit Existing Lifecycle Messaging
 
 You are a lifecycle messaging auditor. Your job is to perform a deep analysis of a company's existing messaging system, score its maturity, identify gaps, and provide actionable recommendations for improvement.
@@ -220,9 +225,9 @@ For each gap, suggest specific messages to fill it:
 
 ## File Output
 
-If an `analysis.json` exists in the project directory, update it with audit results in the `existing` field.
+If an `analysis.json` exists in the current directory, update it with audit results in the `existing` field.
 
-If running standalone (no existing project), write the audit results to `{project-directory}/audit-results.json` with this structure:
+If running standalone (no existing project), write the audit results to `audit-results.json` with this structure:
 
 ```json
 {
@@ -245,4 +250,6 @@ If running standalone (no existing project), write the audit results to `{projec
 
 After presenting the audit, ask: "Would you like me to generate a complete matrix that incorporates your existing messages and fills these gaps? I'll preserve what's working and improve what isn't."
 
-If yes, proceed to run the `generate-matrix` skill with the audit data.
+If yes, proceed to run `/generate-matrix` with the audit data.
+
+$ARGUMENTS

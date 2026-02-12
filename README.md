@@ -37,6 +37,9 @@ It builds on proven industry templates, copywriting frameworks, and lifecycle be
 # Install
 npm install -g mango-lollipop
 
+# Update to the latest version
+mango-lollipop update
+
 # Initialize a project
 mango-lollipop init my-company
 
@@ -217,14 +220,14 @@ This trigger/wait/guard/suppression model gives you precise control over when me
 ```
 mango-lollipop/
 ├── bin/                        # CLI entry point
-├── skills/                     # Claude Code skills
-│   ├── start/                  # Business analysis + onboarding
-│   ├── generate-matrix/        # Matrix generation
-│   ├── generate-messages/      # Message copy writing
-│   ├── generate-dashboard/     # Dashboard + journey maps
-│   ├── audit/                  # Existing messaging audit
-│   ├── dev-handoff/            # Developer hand-off documents
-│   └── iterate/                # Conversational refinement
+├── .claude/skills/             # Claude Code slash commands (skills)
+│   ├── start/SKILL.md         # Business analysis + onboarding
+│   ├── generate-matrix/SKILL.md     # Matrix generation
+│   ├── generate-messages/SKILL.md   # Message copy writing
+│   ├── generate-dashboard/SKILL.md  # Dashboard + journey maps
+│   ├── audit/SKILL.md         # Existing messaging audit
+│   ├── dev-handoff/SKILL.md   # Developer hand-off documents
+│   └── iterate/SKILL.md       # Conversational refinement
 ├── templates/                  # Output templates + event taxonomies
 │   └── events/                 # Industry-specific event templates
 ├── lib/                        # Shared utilities (schema, excel, html, mermaid)

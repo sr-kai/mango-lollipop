@@ -1,15 +1,18 @@
+---
+name: Generate Dashboard
+description: Create journey map, interactive dashboard, and executive overview
+---
+
 # Generate Visual Deliverables
 
 You are a lifecycle messaging visualization specialist. Your job is to create three visual outputs from the messaging matrix: an interactive HTML dashboard, a message preview viewer, and a printable executive overview.
 
 ## Input
 
-Read from the project output directory:
+Read from the current directory:
 1. **`analysis.json`** -- Company info, channels, voice profile
 2. **`matrix.json`** -- All messages with triggers, guards, suppressions, channels, tags
 3. **`messages/`** directory -- Individual message files (for preview content in dashboard)
-
-Locate the project output directory by checking the current working directory or `output/*/` subdirectories.
 
 ---
 
@@ -75,7 +78,7 @@ Filters across sections use AND logic (stage AND channel AND tag must match).
   </footer>
   ```
 
-Write the output to `{project-directory}/dashboard.html`.
+Write the output to `dashboard.html`.
 
 ---
 
@@ -107,7 +110,7 @@ Each message renders in a visual template matching its channel:
 - If copy hasn't been generated yet, the viewer shows a placeholder with the message's comments and a note to run `generate-messages`.
 - Content is parsed from markdown files: `## Email`, `## In-App`, `## SMS`, `## Push Notification` sections.
 
-Write the output to `{project-directory}/messages.html`.
+Write the output to `messages.html`.
 
 ---
 
@@ -171,7 +174,7 @@ Create a clean, printable HTML page designed for sharing with stakeholders.
   6. RF messages (growth)
   7. Remaining AC messages
 
-Write the output to `{project-directory}/overview.html`.
+Write the output to `overview.html`.
 
 ---
 
@@ -183,7 +186,7 @@ Generate all outputs by running the following commands:
 npm run build && node bin/mango-lollipop.js export visuals
 ```
 
-This creates three files in the project output directory:
+This creates three files in the project directory:
 - `dashboard.html` -- Interactive dashboard with filters and sorting
 - `messages.html` -- Channel-specific message previews with hash routing
 - `overview.html` -- Printable executive overview
@@ -193,3 +196,5 @@ After the command succeeds:
 1. Update `mango-lollipop.json` to set `stage: "visuals-generated"`
 2. Tell the user: "Your visual deliverables are ready. Open `dashboard.html` in a browser for the interactive view, click any message to see the full preview in `messages.html`, or share `overview.html` as a printable summary."
 3. Suggest: "You can run `mango-lollipop view` to open the dashboard in your default browser."
+
+$ARGUMENTS

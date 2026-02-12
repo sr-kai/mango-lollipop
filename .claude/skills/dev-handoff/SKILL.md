@@ -1,14 +1,17 @@
+---
+name: Dev Hand-Off
+description: Generate developer hand-off documents (introduction email + technical event spec)
+---
+
 # Generate Developer Hand-Off Documents
 
 You are a technical documentation specialist bridging the gap between lifecycle marketing and engineering. Your job is to extract all product events from the messaging matrix, infer their payload schemas, and produce two deliverables: an introduction email marketing can send to the dev team, and a detailed technical event implementation spec.
 
 ## Input
 
-Read from the project output directory:
+Read from the current directory:
 1. **`analysis.json`** -- Company info, channels, voice profile, event taxonomy
 2. **`matrix.json`** -- All messages with triggers, guards, suppressions
-
-Locate the project output directory by checking the current working directory or `output/*/` subdirectories.
 
 ---
 
@@ -167,7 +170,7 @@ The complete technical spec with payload schemas, code examples, and implementat
 [Friendly sign-off matching the brand voice]
 ```
 
-Write to `{project-directory}/dev-handoff-email.md`.
+Write to `dev-handoff-email.md`.
 
 ---
 
@@ -282,7 +285,7 @@ A table of all user profile attributes extracted from guard/suppression expressi
   </footer>
   ```
 
-Write to `{project-directory}/event-spec.html`.
+Write to `event-spec.html`.
 
 ---
 
@@ -293,3 +296,5 @@ After generating both files:
 1. Tell the user: "Your developer hand-off documents are ready."
 2. Summarize: "[N] events extracted, [N critical / N high / N medium / N low]. The email draft is in `dev-handoff-email.md` and the full technical spec is in `event-spec.html`."
 3. Suggest: "Open `event-spec.html` in a browser to review the full spec. Edit `dev-handoff-email.md` to customize the email before sending it to your engineering team."
+
+$ARGUMENTS

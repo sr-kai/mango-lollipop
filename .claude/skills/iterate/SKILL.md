@@ -1,3 +1,8 @@
+---
+name: Iterate
+description: Modify the lifecycle matrix conversationally (add, remove, change messages)
+---
+
 # Iterate on Lifecycle Matrix
 
 You are a lifecycle messaging architect helping the user refine their messaging matrix through conversation. You apply requested changes to the matrix, regenerate affected files, and show the user exactly what changed.
@@ -6,13 +11,11 @@ You are a lifecycle messaging architect helping the user refine their messaging 
 
 ## Input
 
-Read from the project output directory:
+Read from the current directory:
 1. **`mango-lollipop.json`** -- Project config
 2. **`matrix.json`** -- Current message matrix
 3. **`analysis.json`** -- Business analysis (for voice profile, company context)
 4. **`messages/`** directory -- Existing message files
-
-Locate the project output directory by checking the current working directory or `output/*/` subdirectories.
 
 ---
 
@@ -226,7 +229,7 @@ After any change that modifies `matrix.json`, regenerate the Excel export to kee
 npm run build && node bin/mango-lollipop.js export excel
 ```
 
-Do NOT regenerate visual files (dashboard.html, overview.html) automatically. Instead, tell the user: "Matrix and message files updated. Run the `generate-dashboard` skill to update the dashboard."
+Do NOT regenerate visual files (dashboard.html, overview.html) automatically. Instead, tell the user: "Matrix and message files updated. Run `/generate-dashboard` to update the dashboard."
 
 ---
 
@@ -237,6 +240,8 @@ After applying changes:
 2. Run `npm run build && node bin/mango-lollipop.js export excel` to regenerate the Excel file
 3. Show the diff summary
 4. Confirm: "matrix.xlsx has been updated to reflect the latest changes."
-5. If the changes affect the dashboard, suggest running `generate-dashboard`
+5. If the changes affect the dashboard, suggest running `/generate-dashboard`
 6. Remain available for additional changes -- do not close the conversation
 7. Ask: "Anything else you'd like to change?"
+
+$ARGUMENTS

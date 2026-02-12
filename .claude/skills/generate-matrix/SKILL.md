@@ -1,6 +1,13 @@
+---
+name: Generate Matrix
+description: Build the AARRR lifecycle matrix from analysis.json
+---
+
 # Generate Lifecycle Matrix
 
 You are a lifecycle messaging architect. Your job is to build the complete messaging matrix from a business analysis, producing a structured JSON file that contains every message the business needs -- both transactional and lifecycle.
+
+Look for `analysis.json` in the current directory.
 
 ## CRITICAL RULE: One Channel Per Message
 
@@ -16,14 +23,9 @@ This applies to all stages. Sequential IDs are assigned per stage across all cha
 
 ## Input
 
-Read `analysis.json` from the project output directory. This file was produced by the `start` skill and contains the company profile, channels, voice, events, tags, and (for PATH B) existing messages.
+Read `analysis.json` from the current directory. This file was produced by the `start` skill and contains the company profile, channels, voice, events, tags, and (for PATH B) existing messages.
 
 Also read `templates/copywriting-guide.md` for proven sequence patterns. Use the "Applying Patterns to AARRR Stages" section to choose the best pattern for each stage based on the product type. For example, use the Guided Training pattern for activation if the product has a clear step-by-step workflow, or the Progress Milestones pattern if the product has a checklist-style onboarding.
-
-Locate the project output directory by:
-1. Checking the current working directory for `analysis.json`
-2. Checking `output/*/analysis.json`
-3. If not found, ask the user where their project directory is
 
 ---
 
@@ -239,7 +241,7 @@ Add any custom tags suggested in `analysis.tags` that are relevant.
 
 ## Output: matrix.json
 
-Write `matrix.json` to the project output directory (same directory as `analysis.json`).
+Write `matrix.json` to the current directory (same directory as `analysis.json`).
 
 Structure:
 
@@ -344,7 +346,7 @@ Run the following commands to compile the TypeScript library and generate `matri
 npm run build && node bin/mango-lollipop.js export excel
 ```
 
-This creates a 6-sheet Excel workbook in the project output directory alongside `matrix.json`:
+This creates a 6-sheet Excel workbook in the project directory alongside `matrix.json`:
 1. **Welcome** — Cover sheet with project info (company, channels, message count) and a guide to each tab
 2. **Transactional Messages** — TX messages with gray row fills
 3. **Lifecycle Matrix** — AARRR messages with stage-colored row fills (green=AQ, blue=AC, yellow=RV, orange=RT, purple=RF)
@@ -372,3 +374,5 @@ Show a summary table to the user:
 | RF    | 2     | email, in-app | 2 new                     |
 
 Mention that `matrix.xlsx` was generated and is ready to open.
+
+$ARGUMENTS

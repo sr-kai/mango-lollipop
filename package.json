@@ -23,7 +23,7 @@
   "files": [
     "bin/",
     "dist/",
-    "skills/",
+    ".claude/skills/",
     "templates/",
     "lib/",
     "CLAUDE.md"
