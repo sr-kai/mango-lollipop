@@ -105,13 +105,47 @@ Do not over-personalize. Use `{{first_name}}` in subject lines and greetings. Us
 
 ## Generation Process
 
-Generate messages in batches of 10. After each batch:
+Use a team of parallel writer agents to generate all messages concurrently, one agent per AARRR stage.
 
+### Team Structure
+
+| Agent | Stage | Tone Focus |
+|-------|-------|------------|
+| writer-tx | TX | Transactional: factual, system sender |
+| writer-aq | AQ | Welcome flow, founder persona |
+| writer-ac | AC | Feature intros, product persona |
+| writer-rv | RV | Urgency/conversion tone |
+| writer-rt | RT | Re-engagement, escalating urgency |
+| writer-rf | RF | Advocacy/social proof tone |
+
+Each stage writes to its own directory (`messages/{STAGE}/`) — zero file conflicts.
+
+### Flow
+
+1. **Prepare** — Read `matrix.json` and group messages by stage. Read `analysis.json` and `templates/copywriting-guide.md` for voice profile and copy rules.
+2. **Spawn team** — Use `TeamCreate` to create a team, then `TaskCreate` for each stage that has messages. Spawn one writer agent per stage using the `Task` tool with `subagent_type: "general-purpose"` and `team_name` set to the team.
+3. **Each agent's task description must include:**
+   - The project output directory path
+   - The list of message IDs to write for that stage
+   - The full voice profile parameters (tone, formality, emoji usage, sample phrases, sender personas)
+   - Channel-specific requirements (from the "Channel-Specific Requirements" section above)
+   - PATH B rules for existing/improved messages (from the "PATH B" section above)
+   - Transactional tone rules (for the TX agent)
+   - Instructions to read `analysis.json`, `matrix.json`, and `templates/copywriting-guide.md` before writing
+   - The output file format and naming convention (`messages/{STAGE}/{ID}-{slug}.md`)
+4. **Coordinator waits** — Monitor agent completion via task list. As agents finish, verify their output files exist on disk.
+5. **Cleanup** — Once all agents complete, shut down the team via `SendMessage` with `type: "shutdown_request"`, then `TeamDelete`. Present a summary of all messages written, broken down by stage and channel.
+
+### Fallback
+
+If team creation fails or agents error out, fall back to sequential generation:
+
+Generate messages in batches of 10. After each batch:
 1. Write the batch of message files to disk
 2. Present a summary showing which messages were written
 3. Ask the user: "I've written messages {first_id} through {last_id}. Want me to continue with the next batch?"
 
-**Processing order:**
+**Sequential processing order:**
 1. TX messages first (TX-01 through TX-05)
 2. AQ messages (AQ-01, AQ-02)
 3. AC messages (AC-01 through AC-0N)
@@ -225,4 +259,4 @@ After all messages are generated:
 1. Present a final summary: total messages written, broken down by stage and channel
 2. Note any messages that were skipped (e.g., channel not available)
 3. Update `mango-lollipop.json` to set `stage: "messages-generated"`
-4. Tell the user: "All message copy has been generated. Run the `generate-visuals` skill next to create the journey map and dashboard."
+4. Tell the user: "All message copy has been generated. Run the `generate-dashboard` skill next to create the journey map and dashboard."

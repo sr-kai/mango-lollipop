@@ -2,8 +2,11 @@
 
 import { Command } from 'commander';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'fs';
-import { resolve, join } from 'path';
+import { resolve, join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import open from 'open';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const program = new Command();
 
@@ -41,6 +44,15 @@ function findProjectFile(filename) {
   }
 
   return null;
+}
+
+/**
+ * Find the project directory containing the given file.
+ */
+function findProjectDir(filename) {
+  const filePath = findProjectFile(filename);
+  if (!filePath) return null;
+  return dirname(filePath);
 }
 
 /**
@@ -125,9 +137,9 @@ program
 
     console.log(`Mango Lollipop project "${name}" initialized at ${dir}`);
     console.log();
-    console.log('Next step: Run the analyze skill in Claude Code:');
+    console.log('Next step: Run the start skill in Claude Code:');
     console.log(`  cd ${dir}`);
-    console.log('  claude "Read the analyze skill and help me set up lifecycle messaging"');
+    console.log('  claude "Read the start skill and help me set up lifecycle messaging"');
   });
 
 // --- generate ---------------------------------------------------------------
@@ -140,8 +152,8 @@ program
     if (!config) return;
 
     if (!config.analysis) {
-      console.log('No analysis found. Run the analyze skill first:');
-      console.log('  claude "Read the analyze skill and help me set up lifecycle messaging"');
+      console.log('No analysis found. Run the start skill first:');
+      console.log('  claude "Read the start skill and help me set up lifecycle messaging"');
       return;
     }
 
@@ -156,7 +168,7 @@ program
     console.log('     claude "Read the generate-messages skill and write all message copy"');
     console.log();
     console.log('  3. Generate visuals:');
-    console.log('     claude "Read the generate-visuals skill and create the dashboard and journey map"');
+    console.log('     claude "Read the generate-dashboard skill and create the dashboard and journey map"');
   });
 
 // --- audit ------------------------------------------------------------------
@@ -192,32 +204,115 @@ program
 
 program
   .command('export <type>')
-  .description('Regenerate specific outputs (excel, html, messages)')
-  .action((type) => {
-    const config = loadConfig();
-    if (!config) return;
-
-    if (!config.matrix) {
-      console.log('No matrix found. Run `mango-lollipop generate` first.');
+  .description('Generate outputs from project data (excel, html, messages)')
+  .option('-p, --project <dir>', 'Project directory (auto-detected if omitted)')
+  .action(async (type, opts) => {
+    const projectDir = opts.project || findProjectDir('matrix.json');
+    if (!projectDir) {
+      console.log('No matrix.json found. Run the generate-matrix skill first.');
       return;
     }
 
     switch (type) {
-      case 'excel':
-        console.log('Regenerating matrix.xlsx...');
-        console.log();
-        console.log('Run in Claude Code:');
-        console.log('  claude "Read the generate-matrix skill and regenerate the Excel export"');
+      case 'excel': {
+        const matrixPath = join(projectDir, 'matrix.json');
+        const analysisPath = join(projectDir, 'analysis.json');
+
+        if (!existsSync(matrixPath)) {
+          console.log(`No matrix.json in ${projectDir}. Run the generate-matrix skill first.`);
+          return;
+        }
+        if (!existsSync(analysisPath)) {
+          console.log(`No analysis.json in ${projectDir}. Run the start skill first.`);
+          return;
+        }
+
+        const matrix = JSON.parse(readFileSync(matrixPath, 'utf-8'));
+        const analysis = JSON.parse(readFileSync(analysisPath, 'utf-8'));
+
+        // Flatten tag definitions from analysis
+        const allTags = [
+          ...(analysis.tags?.sources || []),
+          ...(analysis.tags?.plans || []).map(p => `plan:${p}`),
+          ...(analysis.tags?.segments || []).map(s => `segment:${s}`),
+          ...(analysis.tags?.features || []).map(f => `feature:${f}`),
+        ];
+
+        const { generateMatrixWorkbook, writeWorkbook } = await import(
+          resolve(__dirname, '..', 'dist', 'excel.js')
+        );
+
+        const wb = generateMatrixWorkbook(matrix.messages, analysis.events, allTags, analysis);
+        const outPath = join(projectDir, 'matrix.xlsx');
+        writeWorkbook(wb, outPath);
+
+        console.log(`Excel written: ${outPath}`);
+        console.log(`${matrix.messages.length} messages across 6 sheets (Welcome + 5 data sheets)`);
         break;
+      }
       case 'html':
-        console.log('Regenerating dashboard.html and overview.html...');
-        console.log();
-        console.log('Run in Claude Code:');
-        console.log('  claude "Read the generate-visuals skill and regenerate the HTML outputs"');
+      case 'visuals': {
+        const vMatrixPath = join(projectDir, 'matrix.json');
+        const vAnalysisPath = join(projectDir, 'analysis.json');
+
+        if (!existsSync(vMatrixPath)) {
+          console.log(`No matrix.json in ${projectDir}. Run the generate-matrix skill first.`);
+          return;
+        }
+        if (!existsSync(vAnalysisPath)) {
+          console.log(`No analysis.json in ${projectDir}. Run the start skill first.`);
+          return;
+        }
+
+        const vMatrix = JSON.parse(readFileSync(vMatrixPath, 'utf-8'));
+        const vAnalysis = JSON.parse(readFileSync(vAnalysisPath, 'utf-8'));
+
+        const { generateDashboard, generateOverview, generateMessageViewer } = await import(
+          resolve(__dirname, '..', 'dist', 'html.js')
+        );
+
+        // 1. Dashboard
+        const dashboardHtml = generateDashboard(vMatrix.messages, vAnalysis);
+        const dashboardPath = join(projectDir, 'dashboard.html');
+        writeFileSync(dashboardPath, dashboardHtml);
+        console.log(`Dashboard written:   ${dashboardPath}`);
+
+        // 2. Overview
+        const overviewHtml = generateOverview(vMatrix.messages, vAnalysis);
+        const overviewPath = join(projectDir, 'overview.html');
+        writeFileSync(overviewPath, overviewHtml);
+        console.log(`Overview written:    ${overviewPath}`);
+
+        // 3. Message viewer — read message files if they exist
+        const msgContentMap = {};
+        const messagesDir = join(projectDir, 'messages');
+        if (existsSync(messagesDir)) {
+          for (const stage of ['TX', 'AQ', 'AC', 'RV', 'RT', 'RF']) {
+            const stageDir = join(messagesDir, stage);
+            if (existsSync(stageDir)) {
+              const files = readdirSync(stageDir).filter(f => f.endsWith('.md'));
+              for (const file of files) {
+                const raw = readFileSync(join(stageDir, file), 'utf-8');
+                const idMatch = file.match(/^([A-Z]+-\d+)/);
+                if (idMatch) {
+                  // Strip YAML frontmatter, keep body only
+                  const bodyMatch = raw.match(/^---\n[\s\S]*?\n---\n([\s\S]*)$/);
+                  msgContentMap[idMatch[1]] = bodyMatch ? bodyMatch[1].trim() : raw;
+                }
+              }
+            }
+          }
+        }
+
+        const viewerHtml = generateMessageViewer(vMatrix.messages, vAnalysis, msgContentMap);
+        const viewerPath = join(projectDir, 'messages.html');
+        writeFileSync(viewerPath, viewerHtml);
+        console.log(`Message viewer:     ${viewerPath}`);
+
+        console.log(`\n3 visual outputs generated from ${vMatrix.messages.length} messages.`);
         break;
+      }
       case 'messages':
-        console.log('Regenerating message files...');
-        console.log();
         console.log('Run in Claude Code:');
         console.log('  claude "Read the generate-messages skill and regenerate all message files"');
         break;

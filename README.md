@@ -4,12 +4,25 @@ AI-powered lifecycle messaging generator for SaaS companies.
 
 Mango Lollipop uses Claude Code to analyze your business, generate a complete lifecycle messaging matrix using the AARRR pirate metrics framework, write full message copy in your brand voice, and produce production-ready deliverables -- all from your terminal.
 
+It builds on proven industry templates, copywriting frameworks, and lifecycle best practices so you don't have to start from a blank page or reinvent the wheel.
+
+## Philosophy
+
+- **Local only** -- runs entirely on your machine through Claude Code. No hosted services, no accounts, no data leaving your terminal.
+- **Production-ready deliverables** -- everything it generates (Excel, HTML, markdown) is ready to hand off to engineering or share with stakeholders. No "demo quality" output.
+- **Some effort required** -- this is a collaborative tool, not a magic button. You review each step, give feedback, and steer the output. The AI does the heavy lifting, but your judgment makes it good.
+- **Step by step** -- each skill runs independently so you can review, iterate, and course-correct before moving on. Rushing through produces mediocre results.
+- **Scalable** -- works for a 5-message onboarding sequence or a 50-message lifecycle system. The framework scales; the effort stays manageable.
+- **Easy, not complex** -- no build tools, no databases, no config files to wrestle with. Install, init, and start talking to Claude Code.
+
 ## What You Get
 
-- **Excel matrix** -- your lifecycle messaging source of truth (`matrix.xlsx`)
-- **Visual journey map** -- Mermaid-powered customer flow diagram
-- **Full message copy** -- emails, in-app, push, SMS written in your voice
-- **HTML overview** -- shareable, printable executive summary
+- **Excel matrix** -- your lifecycle messaging source of truth (`matrix.xlsx`) with a Welcome sheet, color-coded stages, and 5 data sheets
+- **Interactive dashboard** -- sortable, filterable message matrix with tag sidebar and journey map (`dashboard.html`)
+- **Message previews** -- channel-specific visual previews for email, in-app, SMS, and push (`messages.html`)
+- **Executive overview** -- clean, printable summary for stakeholders (`overview.html`)
+- **Full message copy** -- emails, in-app, push, SMS written in your voice (`messages/`)
+- **Developer hand-off** -- introduction email + technical event spec for your engineering team
 - **Iterative refinement** -- tweak anything conversationally through Claude Code
 
 ## Two Paths
@@ -21,32 +34,160 @@ Mango Lollipop uses Claude Code to analyze your business, generate a complete li
 ## Quick Start
 
 ```bash
-# Install
-npm install -g mango-lollipop
+# Install from GitHub
+npm install -g github:sr-kai/mango-lollipop
 
 # Initialize a project
 mango-lollipop init my-company
 
-# Open Claude Code and run the analyze skill
-claude "Read the analyze skill and help me set up lifecycle messaging"
+# Open Claude Code in your project and run the start skill
+/start
 ```
 
-Claude Code walks you through product understanding, channel selection, voice sampling, and event discovery. Then it generates your full messaging system:
+> Once published to npm: `npm install -g mango-lollipop`
 
-```bash
-# Generate everything (matrix + messages + visuals)
-mango-lollipop generate
+## Typical Workflow
 
-# Open the interactive dashboard
-mango-lollipop view
+Mango Lollipop is designed to be used step by step. Each skill produces output you should review before moving on -- this is how you get good results instead of a wall of AI-generated text you have to untangle later.
 
-# Check project status
-mango-lollipop status
+Stay in Claude Code for the entire workflow. Every step is a slash command.
+
+**Step 1: Analyze your business**
+```
+> /start
+```
+Paste your website URL and Claude will pull most of the information it needs automatically. It'll ask follow-up questions about your channels, voice, and key features. Review `analysis.json` when it's done -- this is the foundation everything else builds on.
+
+**Step 2: Generate the messaging matrix**
+```
+> /generate-matrix
+```
+Creates every message with triggers, guards, suppressions, and timing. Open `matrix.xlsx` and review the strategy. Too many messages? Wrong triggers? Use `/iterate` to tweak before moving on.
+
+**Step 3: Write the message copy**
+```
+> /generate-messages
+```
+Spins up a team of AI copywriters that work in parallel, each writing a batch of 10 messages in your brand voice. Spot-check a few messages in the `messages/` folder when they're done. If the tone is off, tell Claude and it'll adjust.
+
+**Step 4: Generate visual deliverables**
+```
+> /generate-dashboard
+```
+Creates the interactive dashboard, message previews, and executive overview. Open `dashboard.html` in your browser to explore the full matrix with filters, journey maps, and channel-specific message previews.
+
+**Step 5: Hand off to engineering**
+```
+> /dev-handoff
+```
+Generates two files: `dev-handoff-email.md` (an introduction email you can customize and send to your engineering team) and `event-spec.html` (the full technical event spec with payloads and code examples). Review both before sharing.
+
+At any point, use `/iterate` to go back and change things conversationally, or `/audit` if you have existing messages you want analyzed first.
+
+## Skills Reference
+
+All 7 skills run inside Claude Code as slash commands.
+
+### `/start` -- Business Analysis & Onboarding
+
+Gathers your product info, voice samples, channel preferences, and event taxonomy. Paste your website URL and Claude extracts most of the details automatically -- you just confirm and fill in the gaps.
+
+**Prerequisites:** An initialized project (`mango-lollipop init`)
+**Outputs:** `analysis.json`, updated `mango-lollipop.json`
+
+```
+> /start
+# Paste your website URL, answer a few questions, done
 ```
 
-## How It Works
+### `/generate-matrix` -- Build the Lifecycle Matrix
 
-### AARRR Framework
+Creates the complete AARRR messaging matrix with transactional messages, triggers, guards, and suppressions.
+
+**Prerequisites:** `analysis.json` from `/start`
+**Outputs:** `matrix.json`, `matrix.xlsx` (6-sheet workbook with Welcome sheet and color-coded stages)
+
+```
+> /generate-matrix
+# Generates TX-01 through RF-XX with full trigger/guard/suppression logic
+```
+
+### `/generate-messages` -- Write Message Copy
+
+Spins up a parallel team of AI copywriters that write full message copy in your brand voice, batched by 10.
+
+**Prerequisites:** `matrix.json` from `/generate-matrix`
+**Outputs:** `messages/{STAGE}/{ID}-{slug}.md` files with YAML frontmatter and channel-specific body sections
+
+```
+> /generate-messages
+# Writes all message copy, 10 messages at a time
+```
+
+### `/generate-dashboard` -- Create Visual Deliverables
+
+Generates the interactive dashboard, message preview viewer, and printable executive overview.
+
+**Prerequisites:** `matrix.json`, `analysis.json`, optionally `messages/` directory
+**Outputs:** `dashboard.html`, `messages.html`, `overview.html`
+
+```
+> /generate-dashboard
+# Creates 3 HTML files with journey maps, previews, and stats
+```
+
+### `/dev-handoff` -- Developer Hand-Off Documents
+
+Generates an introduction email from marketing to engineering and a detailed technical event implementation spec.
+
+**Prerequisites:** `matrix.json`, `analysis.json`
+**Outputs:** `dev-handoff-email.md`, `event-spec.html`
+
+```
+> /dev-handoff
+# Creates the email draft + interactive technical spec with code examples
+```
+
+### `/audit` -- Audit Existing Messaging
+
+Deep analysis of your current lifecycle messaging with a maturity scorecard, gap analysis, and improvement recommendations.
+
+**Prerequisites:** Your existing messages (pasted or described during the session)
+**Outputs:** Audit report with maturity scores and prioritized recommendations
+
+```
+> /audit
+# Paste your existing messages and stats for a full gap analysis
+```
+
+### `/iterate` -- Conversational Refinement
+
+Modify the matrix conversationally -- add, remove, or tweak messages based on feedback.
+
+**Prerequisites:** `matrix.json`
+**Outputs:** Updated `matrix.json` and `matrix.xlsx`
+
+```
+> /iterate
+# "Add a win-back email for users who cancelled" or "Change AC-03 to fire after 5 days"
+```
+
+## Output Files
+
+| File | Description |
+|------|-------------|
+| `mango-lollipop.json` | Project configuration and state |
+| `analysis.json` | Business analysis from the start skill |
+| `matrix.json` | Structured messaging matrix (machine-readable) |
+| `matrix.xlsx` | Full lifecycle matrix spreadsheet (Welcome + 5 data sheets, color-coded) |
+| `dashboard.html` | Interactive dashboard with journey map, sortable matrix, tag filtering |
+| `messages.html` | Channel-specific message previews with hash routing and keyboard nav |
+| `overview.html` | Clean, printable executive summary with strategy overview |
+| `messages/{STAGE}/*.md` | Individual message files with YAML frontmatter and full copy per channel |
+| `dev-handoff-email.md` | Introduction email from marketing to engineering |
+| `event-spec.html` | Technical event implementation spec with payloads and code examples |
+
+## AARRR Framework
 
 Every message maps to a pirate metrics lifecycle stage:
 
@@ -58,42 +199,20 @@ Every message maps to a pirate metrics lifecycle stage:
 | Retention | `RT` | Keep users engaged and coming back |
 | Referral | `RF` | Turn users into advocates |
 
-### Transactional Separation
+Transactional messages (`TX`) are separated from lifecycle messages. They're non-negotiable (email verification, password reset, receipts), legally distinct, and always generated.
 
-All messages are classified as either **transactional** or **lifecycle**. Transactional messages (email verification, password reset, receipts) are non-negotiable, legally distinct, and always generated. Lifecycle messages are where the strategy lives -- they drive engagement and conversion across the AARRR stages. This separation matters for CAN-SPAM/GDPR compliance, deliverability, and implementation clarity.
+## Message Model
 
-## Skills Reference
+Every message targets exactly **one channel**: `email`, `in-app`, `sms`, or `push`. If a logical message needs to go out on both email and in-app, it becomes two separate entries with sequential IDs.
 
-| Skill | Command | Description |
-|-------|---------|-------------|
-| `analyze` | `claude "Read the analyze skill..."` | Gather product info, voice samples, channel preferences, and event taxonomy |
-| `generate-matrix` | `mango-lollipop generate` | Build the complete lifecycle matrix with triggers, guards, and suppressions |
-| `generate-messages` | `mango-lollipop generate` | Write full message copy in your brand voice for all channels |
-| `generate-visuals` | `mango-lollipop generate` | Create the journey map, interactive dashboard, and executive overview |
-| `audit` | `mango-lollipop audit` | Deep analysis of existing messaging with maturity scorecard and gap analysis |
-| `iterate` | `claude "Read the iterate skill..."` | Modify the matrix conversationally (add, remove, tweak messages) |
+Each message includes:
 
-## Output Files
+- **Trigger** -- the event that fires the message (e.g., `user.email_verified`, `trial.ending_soon`). Can be an event, a scheduled job, or a behavioral signal.
+- **Wait** -- how long to pause after the trigger before sending. Uses ISO 8601 durations: `P0D` (instant), `PT5M` (5 minutes), `P2D` (2 days).
+- **Guards** -- conditions that must ALL be true for the message to send. Example: "User has not completed onboarding" prevents sending a getting-started guide to someone who already finished it. Guards use AND logic.
+- **Suppressions** -- conditions where ANY one being true cancels the message. Example: "User already used this feature" prevents nagging about a feature they've already discovered. Suppressions use OR logic.
 
-| File | Description |
-|------|-------------|
-| `mango-lollipop.json` | Project configuration and state |
-| `matrix.xlsx` | Full lifecycle matrix spreadsheet (transactional + lifecycle sheets, events, tags, channel strategy) |
-| `dashboard.html` | Interactive dashboard with journey map, sortable matrix table, tag filtering, and message previews |
-| `overview.html` | Clean, printable executive summary with strategy overview and implementation order |
-| `messages/{STAGE}/*.md` | Individual message files with YAML frontmatter and full copy per channel |
-
-## Tech Stack
-
-| Component | Technology | Why |
-|-----------|-----------|-----|
-| CLI framework | Commander.js | Lightweight, standard |
-| Skills runtime | Claude Code | The core intelligence |
-| Excel generation | SheetJS (xlsx) | Mature, no dependencies |
-| HTML outputs | Vanilla HTML + Tailwind CDN + Mermaid.js CDN | Zero build step, self-contained |
-| Journey maps | Mermaid.js | Text-based, version-friendly |
-| Data format | JSON + YAML frontmatter in Markdown | Human-readable, Claude-friendly |
-| Package manager | npm | Standard |
+This trigger/wait/guard/suppression model gives you precise control over when messages fire, what conditions must hold, and what should cancel them -- without hardcoding logic into your app.
 
 ## Project Structure
 
@@ -101,31 +220,47 @@ All messages are classified as either **transactional** or **lifecycle**. Transa
 mango-lollipop/
 ├── bin/                        # CLI entry point
 ├── skills/                     # Claude Code skills
-│   ├── analyze/                # Business analysis + onboarding
+│   ├── start/                  # Business analysis + onboarding
 │   ├── generate-matrix/        # Matrix generation
 │   ├── generate-messages/      # Message copy writing
-│   ├── generate-visuals/       # Dashboard + journey maps
+│   ├── generate-dashboard/     # Dashboard + journey maps
 │   ├── audit/                  # Existing messaging audit
+│   ├── dev-handoff/            # Developer hand-off documents
 │   └── iterate/                # Conversational refinement
 ├── templates/                  # Output templates + event taxonomies
 │   └── events/                 # Industry-specific event templates
 ├── lib/                        # Shared utilities (schema, excel, html, mermaid)
-├── examples/                   # Reference examples (Butter, PandaDoc)
 └── output/                     # Generated project output (gitignored)
     └── {project-name}/
         ├── mango-lollipop.json
+        ├── analysis.json
+        ├── matrix.json
         ├── matrix.xlsx
         ├── dashboard.html
+        ├── messages.html
         ├── overview.html
+        ├── dev-handoff-email.md
+        ├── event-spec.html
         └── messages/
-            ├── TX/             # Transactional
-            ├── AQ/             # Acquisition
-            ├── AC/             # Activation
-            ├── RV/             # Revenue
-            ├── RT/             # Retention
-            └── RF/             # Referral
+            ├── TX/
+            ├── AQ/
+            ├── AC/
+            ├── RV/
+            ├── RT/
+            └── RF/
 ```
+
+## Tech Stack
+
+| Component | Technology |
+|-----------|-----------|
+| CLI framework | Commander.js |
+| Skills runtime | Claude Code |
+| Excel generation | xlsx-js-style |
+| HTML outputs | Vanilla HTML + Tailwind CDN + Mermaid.js CDN |
+| Data format | JSON + YAML frontmatter in Markdown |
+| Package manager | npm |
 
 ## License
 
-MIT
+[MIT](LICENSE)

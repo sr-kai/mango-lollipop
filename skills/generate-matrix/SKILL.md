@@ -2,9 +2,21 @@
 
 You are a lifecycle messaging architect. Your job is to build the complete messaging matrix from a business analysis, producing a structured JSON file that contains every message the business needs -- both transactional and lifecycle.
 
+## CRITICAL RULE: One Channel Per Message
+
+**Every message entry must target exactly ONE channel.** Email and in-app are different mediums with different copy, length, and format. Never combine them.
+
+If a logical message should go out on both email and in-app, create **two separate entries** with:
+- Different IDs (e.g., `AQ-01` for email, `AQ-02` for in-app)
+- The same trigger and wait
+- `"channel": "email"` or `"channel": "in-app"` (singular, not an array)
+- Different names that reflect the channel (e.g., "Welcome Email" vs "Welcome In-App")
+
+This applies to all stages. Sequential IDs are assigned per stage across all channels -- do not use suffixes like `AQ-01a`.
+
 ## Input
 
-Read `analysis.json` from the project output directory. This file was produced by the `analyze` skill and contains the company profile, channels, voice, events, tags, and (for PATH B) existing messages.
+Read `analysis.json` from the project output directory. This file was produced by the `start` skill and contains the company profile, channels, voice, events, tags, and (for PATH B) existing messages.
 
 Also read `templates/copywriting-guide.md` for proven sequence patterns. Use the "Applying Patterns to AARRR Stages" section to choose the best pattern for each stage based on the product type. For example, use the Guided Training pattern for activation if the product has a clear step-by-step workflow, or the Progress Milestones pattern if the product has a checklist-style onboarding.
 
@@ -22,7 +34,7 @@ Transactional messages are non-negotiable. Every SaaS product needs them. Genera
 ### TX-01: Email Verification
 - **trigger:** `{ "event": "user.signed_up", "type": "event" }`
 - **wait:** `"P0D"` (instant)
-- **channels:** `["email"]` (always email, even if user didn't select email -- verification requires it)
+- **channel:** `"email"` (always email, even if user didn't select email -- verification requires it)
 - **tags:** `["type:transactional"]`
 - **guards:** none
 - **suppressions:** none
@@ -33,28 +45,28 @@ Transactional messages are non-negotiable. Every SaaS product needs them. Genera
 ### TX-02: Password Reset
 - **trigger:** `{ "event": "user.password_reset_requested", "type": "event" }`
 - **wait:** `"P0D"`
-- **channels:** `["email"]`
+- **channel:** `"email"`
 - **tags:** `["type:transactional"]`
 - **classification:** `"transactional"`
 
 ### TX-03: Payment Receipt
 - **trigger:** `{ "event": "subscription.payment_processed", "type": "event" }`
 - **wait:** `"P0D"`
-- **channels:** `["email"]`
+- **channel:** `"email"`
 - **tags:** `["type:transactional"]`
 - **classification:** `"transactional"`
 
 ### TX-04: Plan Change Confirmation
 - **trigger:** `{ "event": "subscription.changed", "type": "event" }`
 - **wait:** `"P0D"`
-- **channels:** `["email"]`
+- **channel:** `"email"`
 - **tags:** `["type:transactional"]`
 - **classification:** `"transactional"`
 
 ### TX-05: Account Deletion Confirmation
 - **trigger:** `{ "event": "user.deletion_requested", "type": "event" }`
 - **wait:** `"P0D"`
-- **channels:** `["email"]`
+- **channel:** `"email"`
 - **tags:** `["type:transactional"]`
 - **classification:** `"transactional"`
 
@@ -70,21 +82,23 @@ Use the SaaS template as the foundation, customized with data from `analysis.jso
 
 ### Acquisition (AQ)
 
-**AQ-01: Welcome Message**
+For each logical message in this stage, create a **separate entry for each channel** in `analysis.channels`. For example, if the user selected email + in-app, a welcome message becomes two entries: one email, one in-app.
+
+**Welcome Message (email: AQ-01, in-app: AQ-02)**
 - **trigger:** `{ "event": "user.email_verified", "type": "event" }`
 - **wait:** `"PT5M"` (5 minutes after verification -- gives time for redirect)
-- **channels:** From `analysis.channels` (email recommended as primary)
+- **channel:** One of the channels from `analysis.channels`
 - **guards:** none
 - **suppressions:** none
 - **tags:** `["type:educational"]`
 - **from:** CEO/founder persona from `analysis.voice.sender_personas`
 - **goal:** "Onboarding start, set expectations"
-- **content notes:** USP summary, quick-start CTA, support info, warm personal tone
+- **content notes:** USP summary, quick-start CTA, support info, warm personal tone. In-app version should be much shorter and punchier than email.
 
-**AQ-02: Getting Started Guide**
+**Getting Started Guide (email only)**
 - **trigger:** `{ "event": "user.email_verified", "type": "event" }`
 - **wait:** `"P1D"` (1 day after verification)
-- **channels:** From `analysis.channels`
+- **channel:** `"email"`
 - **guards:** `[{ "condition": "User has not completed onboarding", "expression": "onboarding.completed == false" }]`
 - **suppressions:** `[{ "condition": "User already active", "expression": "user.sessions_count >= 3" }]`
 - **tags:** `["type:educational"]`
@@ -92,90 +106,97 @@ Use the SaaS template as the foundation, customized with data from `analysis.jso
 
 ### Activation (AC) -- THE CORE SEQUENCE
 
-This is the most important stage. Generate one message per key feature from `analysis.company.key_features`. Each message introduces ONE feature.
+This is the most important stage. Generate one **logical** message per key feature from `analysis.company.key_features`. Each introduces ONE feature.
 
-For each feature at index `i` (0-based) in `analysis.company.key_features`:
+**IMPORTANT:** For each feature, create a separate entry per channel in `analysis.channels`. If the user has email + in-app, each feature produces TWO entries. Assign sequential IDs across all entries (e.g., AC-01 email, AC-02 in-app, AC-03 email, AC-04 in-app...).
 
-**AC-{01+i}: Feature introduction for `{feature_name}`**
+For each feature at index `i` (0-based) in `analysis.company.key_features`, for each channel:
+
+**Feature introduction for `{feature_name}`**
 - **trigger:** `{ "event": "user.email_verified", "type": "event" }` (all start from the same anchor)
-- **wait:** Staggered cadence: `["P2D", "P3D", "P5D", "P7D", "P10D", "P14D"]` (use index to select)
-- **channels:** From `analysis.channels`. Alternate email-only and email+in-app for variety.
+- **wait:** Staggered cadence: `["P2D", "P3D", "P5D", "P7D", "P10D", "P14D"]` (use feature index to select -- both channel variants of the same feature share the same wait)
+- **channel:** `"email"` or `"in-app"` (one per entry)
 - **guards:** `[{ "condition": "User has not cancelled", "expression": "user.plan != 'cancelled'" }]`
 - **suppressions:** `[{ "condition": "User already used this feature", "expression": "feature.{feature_name}_used == true" }]` -- this is critical: do not nag about features they already discovered
 - **tags:** `["type:educational", "feature:{feature_name}"]`
 - **from:** Product persona from `analysis.voice.sender_personas`
 - **goal:** "Drive first use of {feature_name}"
-- **format:** `"plain"` for most, `"rich"` for features that benefit from screenshots
+- **format:** `"plain"` for email, `"plain"` for in-app
+- **content notes:** Email version is longer, educational, storytelling. In-app version is a short nudge (1-2 sentences max with a CTA button).
 
 ### Revenue (RV)
 
-**RV-01: Trial Ending Soon**
+For messages that need both email and in-app, create separate entries per channel with sequential IDs.
+
+**Trial Ending Soon (email + in-app if available)**
 - **trigger:** `{ "event": "trial.ending_soon", "type": "event" }`
 - **wait:** `"P0D"` (instant on trigger, which fires ~3 days before expiry)
-- **channels:** From `analysis.channels` (email + in-app if available)
+- **channel:** One entry per channel
 - **guards:** `[{ "condition": "User is on trial", "expression": "user.plan == 'trial'" }]`
 - **tags:** `["type:promotional", "segment:trial"]`
 - **goal:** "Convert trial to paid"
 
-**RV-02: Trial Expired**
+**Trial Expired (email only)**
 - **trigger:** `{ "event": "trial.expired", "type": "event" }`
 - **wait:** `"P0D"`
-- **channels:** `["email"]`
+- **channel:** `"email"`
 - **guards:** `[{ "condition": "User has not upgraded", "expression": "user.plan != 'paid'" }]`
 - **tags:** `["type:promotional", "segment:trial"]`
 - **goal:** "Win back expired trial user"
 
-**RV-03: Usage Limit Approaching**
+**Usage Limit Approaching (in-app preferred, email fallback)**
 - **trigger:** `{ "event": "usage.limit_approaching", "type": "event" }`
 - **wait:** `"P0D"`
-- **channels:** From `analysis.channels` (in-app preferred if available)
+- **channel:** One entry per channel
 - **tags:** `["type:behavioral"]`
 - **goal:** "Drive upgrade via natural usage growth"
 
 ### Retention (RT)
 
-**RT-01: Usage Recap**
+For re-engagement messages, create separate entries per channel where applicable.
+
+**Usage Recap (email only)**
 - **trigger:** `{ "event": "scheduled", "type": "scheduled", "schedule": "every friday 9am" }`
 - **wait:** `"P0D"`
-- **channels:** `["email"]`
+- **channel:** `"email"`
 - **guards:** `[{ "condition": "User was active this week", "expression": "user.sessions_this_week >= 1" }]`
 - **tags:** `["type:behavioral"]`
 - **goal:** "Reinforce value, drive continued usage"
 
-**RT-02: Inactive 3 Days (Soft Nudge)**
+**Inactive 3 Days (email + in-app if available)**
 - **trigger:** `{ "event": "user.inactive_3_days", "type": "behavioral" }`
 - **wait:** `"P0D"`
-- **channels:** From `analysis.channels` (push + email if available)
+- **channel:** One entry per channel
 - **tags:** `["type:behavioral", "segment:dormant"]`
 - **goal:** "Re-engage before habit breaks"
 
-**RT-03: Inactive 7 Days (Medium Nudge)**
+**Inactive 7 Days (email only)**
 - **trigger:** `{ "event": "user.inactive_7_days", "type": "behavioral" }`
 - **wait:** `"P0D"`
-- **channels:** `["email"]`
+- **channel:** `"email"`
 - **tags:** `["type:behavioral", "segment:dormant"]`
 - **goal:** "Show value they're missing"
 
-**RT-04: Inactive 14 Days (Breakup)**
+**Inactive 14 Days (email only)**
 - **trigger:** `{ "event": "user.inactive_14_days", "type": "behavioral" }`
 - **wait:** `"P0D"`
-- **channels:** `["email"]`
+- **channel:** `"email"`
 - **tags:** `["type:behavioral", "segment:churning", "priority:high"]`
 - **goal:** "Last attempt before marking churned"
 
 ### Referral (RF)
 
-**RF-01: Invite Teammates**
+**Invite Teammates (email + in-app if available)**
 - **trigger:** `{ "event": "milestone.first_success", "type": "event" }`
 - **wait:** `"P1D"` (1 day after milestone -- let them enjoy the win first)
-- **channels:** From `analysis.channels` (in-app + email if available)
+- **channel:** One entry per channel
 - **tags:** `["type:promotional"]`
 - **goal:** "Organic growth via team invites"
 
-**RF-02: Referral Program Introduction**
+**Referral Program Introduction (email only)**
 - **trigger:** `{ "event": "user.active_30_days", "type": "behavioral" }`
 - **wait:** `"P0D"`
-- **channels:** `["email"]`
+- **channel:** `"email"`
 - **tags:** `["type:promotional"]`
 - **goal:** "Turn power users into advocates"
 
@@ -242,7 +263,7 @@ Structure:
       "wait": "P0D",
       "guards": [],
       "suppressions": [],
-      "channels": ["email"],
+      "channel": "email",
       "cta": {
         "text": "Verify email",
         "url": "/verify?token={{token}}"
@@ -258,7 +279,7 @@ Structure:
     {
       "id": "AQ-01",
       "stage": "AQ",
-      "name": "Welcome to {Product}!",
+      "name": "Welcome Email",
       "classification": "lifecycle",
       "trigger": {
         "event": "user.email_verified",
@@ -267,26 +288,79 @@ Structure:
       "wait": "PT5M",
       "guards": [],
       "suppressions": [],
-      "channels": ["email", "in-app"],
+      "channel": "email",
       "cta": {
         "text": "Start your first {action}",
         "url": "/app/get-started"
       },
       "segment": "All verified users",
       "tags": ["type:educational"],
-      "format": "rich",
+      "format": "plain",
       "from": "Jakob, CEO",
       "goal": "Onboarding start",
       "comments": "Warm, personal. USP summary + quick-start CTA.",
+      "origin": "new"
+    },
+    {
+      "id": "AQ-02",
+      "stage": "AQ",
+      "name": "Welcome In-App",
+      "classification": "lifecycle",
+      "trigger": {
+        "event": "user.email_verified",
+        "type": "event"
+      },
+      "wait": "PT5M",
+      "guards": [],
+      "suppressions": [],
+      "channel": "in-app",
+      "cta": {
+        "text": "Get started",
+        "url": "/app/get-started"
+      },
+      "segment": "All verified users",
+      "tags": ["type:educational"],
+      "format": "plain",
+      "from": "Jakob, CEO",
+      "goal": "Onboarding start",
+      "comments": "Short nudge. 1-2 sentences + CTA button.",
       "origin": "new"
     }
   ]
 }
 ```
 
-Each message object must include ALL fields from the Message schema: `id`, `stage`, `name`, `classification`, `trigger`, `wait`, `guards`, `suppressions`, `channels`, `cta`, `segment`, `tags`, `format`, `from`, `goal`, `comments`, and `origin`.
+Each message object must include ALL fields from the Message schema: `id`, `stage`, `name`, `classification`, `trigger`, `wait`, `guards`, `suppressions`, `channel`, `cta`, `segment`, `tags`, `format`, `from`, `goal`, `comments`, and `origin`.
 
-After writing the file, present a summary table to the user:
+**Remember: `channel` is singular (a string), not `channels` (an array).** Every entry targets exactly one channel.
+
+After writing the file, do three things:
+
+### 1. Generate the Excel export
+
+Run the following commands to compile the TypeScript library and generate `matrix.xlsx`:
+
+```bash
+npm run build && node bin/mango-lollipop.js export excel
+```
+
+This creates a 6-sheet Excel workbook in the project output directory alongside `matrix.json`:
+1. **Welcome** — Cover sheet with project info (company, channels, message count) and a guide to each tab
+2. **Transactional Messages** — TX messages with gray row fills
+3. **Lifecycle Matrix** — AARRR messages with stage-colored row fills (green=AQ, blue=AC, yellow=RV, orange=RT, purple=RF)
+4. **Event Taxonomy** — All events and which messages use them
+5. **Tags** — Tag inventory with message counts
+6. **Channel Strategy** — Message distribution by channel and stage
+
+All sheets have dark header rows with white text. Data rows on Transactional and Lifecycle sheets are color-coded by stage.
+
+### 2. Update project config
+
+Update `mango-lollipop.json` to set `stage: "matrix-generated"` and point `matrix` to `"matrix.json"`.
+
+### 3. Present the summary
+
+Show a summary table to the user:
 
 | Stage | Count | Channels | Origin (new/improved/existing) |
 |-------|-------|----------|-------------------------------|
@@ -297,4 +371,4 @@ After writing the file, present a summary table to the user:
 | RT    | 4     | email, push   | 1 existing, 3 new         |
 | RF    | 2     | email, in-app | 2 new                     |
 
-Also update `mango-lollipop.json` to set `stage: "matrix-generated"`.
+Mention that `matrix.xlsx` was generated and is ready to open.

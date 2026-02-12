@@ -19,9 +19,32 @@ Based on their answer, set the path:
 
 ## Step 1: Product Understanding
 
-Ask the user to describe their product. They may:
-- Describe it in natural language (conversation)
-- Upload or paste a document (product brief, pitch deck, PRD, landing page copy, etc.)
+Ask the user how they'd like to share their product info:
+
+> "How would you like to tell me about your product? Pick whichever is easiest:"
+>
+> 1. **Paste your website URL** — I'll pull what I can from your site automatically
+> 2. **Describe it** — Tell me about it in your own words
+> 3. **Upload a document** — Product brief, pitch deck, PRD, landing page copy, etc.
+
+### Option 1: Website URL (recommended)
+
+If the user provides a URL:
+
+1. Fetch the homepage using WebFetch. Extract whatever you can find: company name, product description, value proposition, features, pricing, target audience.
+2. Also try fetching common subpages if they exist — append these paths to the base URL and fetch them:
+   - `/pricing` or `/plans` — for pricing model and plan tiers
+   - `/features` — for a comprehensive feature list
+   - `/about` — for company context and target audience
+   - `/customers` or `/case-studies` — for audience signals
+3. From all fetched content, extract and fill in as many of the 7 fields below as possible.
+4. Present what you found and **only ask follow-up questions for fields you couldn't determine** from the website. The aha moment is almost never on the website — always ask about it.
+
+### Option 2 & 3: Description or Document
+
+If the user describes their product or uploads a document, parse it and extract the information below.
+
+### Required Fields
 
 Extract and confirm the following:
 
@@ -33,7 +56,7 @@ Extract and confirm the following:
 6. **Key features** - List the 3-6 most important features (these become the activation drip sequence)
 7. **Pricing model** - Free tier, trial period, plan tiers, enterprise
 
-If they upload a document, parse it and extract this information. Present your understanding back to them and ask: "Did I get this right? Anything to add or correct?"
+Present your understanding back to the user and ask: "Here's what I found. Did I get this right? Anything to add or correct?" Clearly mark any fields you couldn't determine and ask specifically about those.
 
 Do not proceed until you have confirmed understanding of all 7 items.
 

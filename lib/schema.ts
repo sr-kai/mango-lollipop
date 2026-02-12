@@ -48,7 +48,7 @@ export interface Message {
   preheader?: string;
   body: string;
   cta: CTA;
-  channels: Channel[];
+  channel: Channel;
   format: "plain" | "rich";
   from: string;
   segment: string;
@@ -237,15 +237,9 @@ export function validateMessage(msg: unknown): ValidationResult {
     errors.push(`Invalid format: "${String(m.format)}". Must be "plain" or "rich"`);
   }
 
-  // Channels
-  if (!Array.isArray(m.channels) || m.channels.length === 0) {
-    errors.push("Must have at least one channel");
-  } else {
-    for (const ch of m.channels) {
-      if (!isValidChannel(ch)) {
-        errors.push(`Invalid channel: "${String(ch)}". Must be one of: ${VALID_CHANNELS.join(", ")}`);
-      }
-    }
+  // Channel (singular)
+  if (!isValidChannel(m.channel)) {
+    errors.push(`Invalid channel: "${String(m.channel)}". Must be one of: ${VALID_CHANNELS.join(", ")}`);
   }
 
   // Tags

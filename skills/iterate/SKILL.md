@@ -220,7 +220,13 @@ After modifications, determine which files need regeneration:
 | Add/remove tags | `matrix.json` only |
 | Change guards/suppressions | `matrix.json`, message file frontmatter |
 
-Do NOT regenerate visual files (dashboard.html, overview.html, journey.mermaid) automatically. Instead, tell the user: "Matrix and message files updated. Run the `generate-visuals` skill to update the dashboard and journey map."
+After any change that modifies `matrix.json`, regenerate the Excel export to keep it in sync:
+
+```bash
+npm run build && node bin/mango-lollipop.js export excel
+```
+
+Do NOT regenerate visual files (dashboard.html, overview.html) automatically. Instead, tell the user: "Matrix and message files updated. Run the `generate-dashboard` skill to update the dashboard."
 
 ---
 
@@ -228,7 +234,9 @@ Do NOT regenerate visual files (dashboard.html, overview.html, journey.mermaid) 
 
 After applying changes:
 1. Confirm all files were updated successfully
-2. Show the diff summary
-3. If the changes affect the journey map or dashboard, suggest running `generate-visuals`
-4. Remain available for additional changes -- do not close the conversation
-5. Ask: "Anything else you'd like to change?"
+2. Run `npm run build && node bin/mango-lollipop.js export excel` to regenerate the Excel file
+3. Show the diff summary
+4. Confirm: "matrix.xlsx has been updated to reflect the latest changes."
+5. If the changes affect the dashboard, suggest running `generate-dashboard`
+6. Remain available for additional changes -- do not close the conversation
+7. Ask: "Anything else you'd like to change?"

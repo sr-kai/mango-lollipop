@@ -4,3 +4,4 @@ dist/
 *.pdf
 *.htm
 *_files/
+.DS_Store

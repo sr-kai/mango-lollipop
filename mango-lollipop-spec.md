@@ -74,7 +74,7 @@ Tags provide flexible cross-cutting categorization beyond AARRR stages. They let
 | `feature:` | `agenda`, `polls`, `integrations`, `breakouts` | Which feature is being promoted |
 | `priority:` | `critical`, `high`, `normal`, `low` | Send priority |
 
-Tags are freeform strings — users can create any tag they want. The categories above are suggestions that the `analyze` skill recommends based on the business.
+Tags are freeform strings — users can create any tag they want. The categories above are suggestions that the `start` skill recommends based on the business.
 
 ### 2.4 Message Anatomy
 
@@ -227,16 +227,18 @@ mango-lollipop/
 │   └── mango-lollipop.js           # CLI dispatcher
 │
 ├── skills/                          # Claude Code skills (the brain)
-│   ├── analyze/
+│   ├── start/
 │   │   └── SKILL.md                 # Analyze business + existing messages
 │   ├── generate-matrix/
 │   │   └── SKILL.md                 # Generate the lifecycle matrix
 │   ├── generate-messages/
 │   │   └── SKILL.md                 # Write full message copy
-│   ├── generate-visuals/
+│   ├── generate-dashboard/
 │   │   └── SKILL.md                 # Create journey maps + dashboard
 │   ├── audit/
 │   │   └── SKILL.md                 # Audit existing lifecycle messaging
+│   ├── dev-handoff/
+│   │   └── SKILL.md                 # Developer hand-off documents
 │   └── iterate/
 │       └── SKILL.md                 # Modify matrix based on feedback
 │
@@ -255,25 +257,6 @@ mango-lollipop/
 │   ├── excel.ts                     # Excel generation (xlsx)
 │   ├── mermaid.ts                   # Mermaid diagram generation
 │   └── html.ts                      # HTML dashboard + overview generation
-│
-├── examples/                        # Reference examples
-│   ├── butter/
-│   │   ├── mango-lollipop.json
-│   │   ├── matrix.xlsx
-│   │   └── messages/
-│   │       ├── TX/
-│   │       ├── AQ/
-│   │       ├── AC/
-│   │       ├── RV/
-│   │       ├── RT/
-│   │       └── RF/
-│   └── pandadoc/
-│       ├── mango-lollipop.json
-│       ├── matrix.xlsx
-│       └── messages/
-│           ├── TX/
-│           ├── AQ/
-│           └── ...
 │
 └── output/                          # Generated per-project (gitignored)
     └── {project-name}/
@@ -309,7 +292,7 @@ mango-lollipop/
 
 ## 4. Claude Code Skills Design
 
-### 4.1 Skill: `analyze` — Understand the Business
+### 4.1 Skill: `start` — Understand the Business
 
 **Purpose:** Gather everything needed to generate a great matrix. Routes into one of two paths based on whether the user has existing messaging or is starting fresh.
 
@@ -562,7 +545,7 @@ File format: YAML frontmatter with metadata + markdown body with copy
 for each channel variant.
 ```
 
-### 4.4 Skill: `generate-visuals` — Dashboard & Journey Maps
+### 4.4 Skill: `generate-dashboard` — Dashboard & Journey Maps
 
 **Purpose:** Create the visual deliverables.
 
@@ -644,6 +627,62 @@ Parse whatever format they provide and normalize into our Message schema.
 - Updated matrix incorporating existing + new
 ```
 
+### 4.7 Skill: `dev-handoff` — Developer Hand-Off
+
+**Purpose:** Generate two deliverables that bridge the gap between the messaging matrix and engineering implementation: an introduction email for the dev team and a detailed technical event spec.
+
+**Position in pipeline:** Independent branch off `generate-matrix`. Runs anytime after `matrix.json` exists.
+
+```
+start -> generate-matrix -> generate-messages -> generate-dashboard
+                         \-> dev-handoff (independent)
+```
+
+**Key logic:**
+
+```markdown
+# Generate Developer Hand-Off Documents
+
+## Input
+Read analysis.json (company info, event taxonomy) and matrix.json (all messages).
+
+## Process
+1. Extract all unique trigger.event values from matrix.json
+2. Merge with all events from analysis.json event taxonomy (include unused events)
+3. Cross-reference: for each event, identify which messages use it as trigger,
+   guard, or suppression
+4. Assign priority:
+   - Critical: triggers 3+ messages
+   - High: triggers 2 messages
+   - Medium: triggers 1 message
+   - Low: guards/suppressions only, or unused
+5. Categorize events by name prefix (user.*, feature.*, trial.*, etc.)
+6. Infer payload schemas per event based on:
+   - Base properties (user_id, timestamp)
+   - Event name pattern (user.* gets email/plan, feature.* gets feature_name, etc.)
+   - Product context from analysis.company
+   - Properties referenced in guard/suppression expressions
+7. Extract all profile attributes from guard/suppression expressions
+   (user.plan, feature.agenda_used, etc.)
+
+## Output A: dev-handoff-email.md
+Markdown email draft for marketing to send to engineering.
+Includes: project context, scope summary (N events, N critical),
+top priority events table, suggested implementation phases, pointer to full spec.
+Uses brand voice adjusted for internal engineering audience.
+
+## Output B: event-spec.html
+Self-contained HTML (Tailwind CDN) with:
+- Summary header (N events, N categories, N dependent messages)
+- Priority overview table (event, category, messages blocked, priority badge)
+- Per-event detail sections: name, category, priority, description,
+  when to fire, properties table, message cross-references,
+  JavaScript code example (analytics.track pattern), implementation notes
+- Special handling for behavioral events (need background job)
+- Special handling for scheduled events (include schedule pattern)
+- Appendix: all profile attributes from guard/suppression expressions
+```
+
 ### 4.6 Skill: `iterate` — Refine the Matrix
 
 **Purpose:** Let users modify the matrix conversationally.
@@ -680,11 +719,11 @@ Parse whatever format they provide and normalize into our Message schema.
 # Initialize a new project
 mango-lollipop init [project-name]
 # → Creates output/{project-name}/ directory structure
-# → Starts the analyze skill interactively
+# → Starts the start skill interactively
 
 # Generate the full matrix from analysis
 mango-lollipop generate
-# → Runs generate-matrix → generate-messages → generate-visuals
+# → Runs generate-matrix → generate-messages → generate-dashboard
 # → Produces all output files
 
 # Audit existing messaging
@@ -754,9 +793,9 @@ program
     writeFileSync(`${dir}/mango-lollipop.json`, JSON.stringify(config, null, 2));
     
     console.log(`🥭🍭 Mango Lollipop project "${name}" initialized at ${dir}`);
-    console.log(`\nNext step: Run the analyze skill in Claude Code:`);
+    console.log(`\nNext step: Run the start skill in Claude Code:`);
     console.log(`  cd ${dir}`);
-    console.log(`  claude "Read the analyze skill and help me set up lifecycle messaging"`);
+    console.log(`  claude "Read the start skill and help me set up lifecycle messaging"`);
   });
 
 program
@@ -830,7 +869,7 @@ program.parse();
 User: mango-lollipop init acme-corp
 → Creates project directory with stage folders
 
-User: claude "Read the analyze skill and help me set up lifecycle messaging"
+User: claude "Read the start skill and help me set up lifecycle messaging"
 
 Claude: Welcome to Mango Lollipop! 🥭🍭 Let's build your lifecycle 
 messaging system.
@@ -893,7 +932,7 @@ User: Let's go!
 
 ```
 User: mango-lollipop init acme-corp
-User: claude "Read the analyze skill and help me improve our messaging"
+User: claude "Read the start skill and help me improve our messaging"
 
 Claude: Welcome! Let's level up your lifecycle messaging. 🥭🍭
 
@@ -1036,25 +1075,36 @@ Dotted lines = suppression rules
 
 ### 8.1 Excel Matrix (`matrix.xlsx`)
 
-**Sheet 1: "Transactional Messages"**
+**Sheet 1: "Welcome"**
+
+A cover sheet with project info and a guide to the workbook:
+- Row 1: "Mango Lollipop — Lifecycle Messaging Matrix" (bold, large)
+- Rows 3-8: Company name, product type, channels, generation date, total message count, path (Fresh / Improving Existing)
+- Row 10: "How to Use This Spreadsheet" (bold)
+- Rows 11-15: Brief descriptions of each subsequent sheet tab
+- Rows 18-19: Footer with repo link and attribution
+
+**Sheet 2: "Transactional Messages"**
 
 | ID | Name | Trigger Event | Trigger Type | Wait | Channels | CTA | From | Tags |
 |----|------|--------------|-------------|------|----------|-----|------|------|
 | TX-01 | Verify Your Email | user.signed_up | event | P0D | email | Verify email | Team | type:transactional |
 | TX-02 | Password Reset | user.password_reset_requested | event | P0D | email | Reset password | Team | type:transactional |
 
-**Sheet 2: "Lifecycle Matrix"**
+**Sheet 3: "Lifecycle Matrix"**
 
 | ID | Stage | Name | Trigger Event | Trigger Type | Wait | Guards | Suppressions | Channels | CTA | Goal | Segment | Tags | Format | From | Origin |
 |----|-------|------|--------------|-------------|------|--------|-------------|----------|-----|------|---------|------|--------|------|--------|
 | AQ-01 | Acquisition | Welcome! | user.email_verified | event | PT5M | — | — | email, in-app | Try {feature} | Onboarding start | Everyone | type:educational | Rich | CEO | new |
 | AC-01 | Activation | Master Agendas | user.email_verified | event | P2D | user.plan != cancelled | feature.agenda_used | email | Set up agenda | Feature adoption | Everyone | type:educational, feature:agenda | Plain | Product | new |
 
-**Sheet 3: "Event Taxonomy"** — All events with descriptions and which messages use them
+Rows are color-coded by AARRR stage (green=AQ, blue=AC, yellow=RV, orange=RT, purple=RF). Header row has dark gray fill with white text.
 
-**Sheet 4: "Tags"** — All tags with message counts and descriptions
+**Sheet 4: "Event Taxonomy"** — All events with descriptions and which messages use them
 
-**Sheet 5: "Channel Strategy"** — Summary of which channels used where and why
+**Sheet 5: "Tags"** — All tags with message counts and descriptions
+
+**Sheet 6: "Channel Strategy"** — Summary of which channels used where and why
 
 ### 8.2 Dashboard HTML (`dashboard.html`)
 
@@ -1143,6 +1193,27 @@ Chris
 breakouts all pre-loaded. Takes 2 minutes.
 **CTA:** Create agenda
 ```
+
+### 8.5 Developer Hand-Off Email (`dev-handoff-email.md`)
+
+Markdown email draft from marketing/product to engineering. Contains:
+- Project context and why event instrumentation is needed
+- Scope summary (N events, N critical, N profile attributes)
+- Top priority events table (Critical + High)
+- Suggested implementation phases (Identity/TX first, then Activation, then Conversion/Retention, then Growth)
+- Pointer to the full technical spec (`event-spec.html`)
+- Written in the brand voice adjusted for an internal engineering audience
+
+### 8.6 Technical Event Spec (`event-spec.html`)
+
+Self-contained HTML file (Tailwind CDN) serving as the engineering reference for event instrumentation. Contains:
+- Summary header with event count, category count, dependent message count
+- Priority overview table (all events with category, trigger type, messages blocked, priority badge)
+- Per-event detail sections with: name, category, priority, AI-inferred description, when to fire, properties table (name/type/required/example), message cross-references, JavaScript `analytics.track(...)` code example, implementation notes
+- Special handling for behavioral events (background job required, not real-time)
+- Special handling for scheduled events (schedule pattern included)
+- Profile attributes appendix (all attributes from guard/suppression expressions with type and usage)
+- Works from `file://` protocol, supports dark/light mode
 
 ---
 
@@ -1354,7 +1425,7 @@ No PDF generation, no Puppeteer, no build tools. All outputs are either Excel, H
 - [ ] Basic mango-lollipop.json config management
 
 ### Phase 2: Skills (Week 2)
-- [ ] `analyze` skill — dual-path onboarding (fresh vs. existing)
+- [ ] `start` skill — dual-path onboarding (fresh vs. existing)
 - [ ] `generate-matrix` skill — matrix generation with TX separation
 - [ ] `generate-messages` skill — full copy generation (batched by 10)
 - [ ] Wire skills to read/write project files, respect channel preferences
