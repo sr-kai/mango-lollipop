@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SignalStack - Lifecycle Messaging Overview</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @media print { body { font-size: 11px; } .page-break { page-break-before: always; } }
+    .stage-badge { display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+    .tag-pill { display: inline-block; padding: 1px 6px; border-radius: 9999px; font-size: 0.7rem; background: #e5e7eb; color: #374151; margin: 1px; }
+  </style>
+</head>
+<body class="bg-white text-gray-900 max-w-4xl mx-auto p-8">
+
+  <!-- Inline data -->
+  <script id="msg-data" type="application/json">[{"id":"TX-01","stage":"TX","name":"Verify Your Email","classification":"transactional","trigger":{"event":"user.signed_up","type":"event"},"wait":"P0D","guards":[],"suppressions":[],"channel":"email","cta":{"text":"Verify email","url":"/verify?token={{token}}"},"segment":"All new signups","tags":["type:transactional"],"format":"plain","from":"SignalStack Team","goal":"Email verification","comments":"Instant. Verification link with 24h expiry.","origin":"new"},{"id":"TX-02","stage":"TX","name":"Password Reset","classification":"transactional","trigger":{"event":"user.password_reset_requested","type":"event"},"wait":"P0D","guards":[],"suppressions":[],"channel":"email","cta":{"text":"Reset password","url":"/reset-password?token={{token}}"},"segment":"Users requesting reset","tags":["type:transactional"],"format":"plain","from":"SignalStack Team","goal":"Password reset","comments":"Instant. Reset link with 1h expiry.","origin":"new"},{"id":"TX-03","stage":"TX","name":"Payment Receipt","classification":"transactional","trigger":{"event":"subscription.payment_processed","type":"event"},"wait":"P0D","guards":[],"suppressions":[],"channel":"email","cta":{"text":"View invoice","url":"/settings/billing"},"segment":"Paying users","tags":["type:transactional"],"format":"plain","from":"SignalStack Team","goal":"Payment confirmation","comments":"Include amount, plan name, next billing date.","origin":"new"},{"id":"TX-04","stage":"TX","name":"Plan Change Confirmation","classification":"transactional","trigger":{"event":"subscription.changed","type":"event"},"wait":"P0D","guards":[],"suppressions":[],"channel":"email","cta":{"text":"View your plan","url":"/settings/billing"},"segment":"Users changing plans","tags":["type:transactional"],"format":"plain","from":"SignalStack Team","goal":"Plan change confirmation","comments":"Show old plan → new plan, new credit allocation, effective date.","origin":"new"},{"id":"TX-05","stage":"TX","name":"Account Deletion Confirmation","classification":"transactional","trigger":{"event":"user.deletion_requested","type":"event"},"wait":"P0D","guards":[],"suppressions":[],"channel":"email","cta":{"text":"Cancel deletion","url":"/settings/account?cancel_deletion=true"},"segment":"Users requesting deletion","tags":["type:transactional"],"format":"plain","from":"SignalStack Team","goal":"Confirm deletion, offer reversal window","comments":"30-day grace period. Show what data will be lost.","origin":"new"},{"id":"AQ-01","stage":"AQ","name":"SignalStack is *not* for everyone","classification":"lifecycle","trigger":{"event":"user.email_verified","type":"event"},"wait":"PT5M","guards":[],"suppressions":[],"channel":"email","cta":{"text":"Run your first AI search","url":"/app/search"},"segment":"All verified users","tags":["type:educational"],"format":"plain","from":"Vlad from SignalStack","goal":"Onboarding start — drive first search","comments":"Bold, direct welcome email. Make it clear what SignalStack does (and doesn't do). Set expectations for the onboarding sequence. Single CTA to first search.","origin":"new"},{"id":"AQ-02","stage":"AQ","name":"SignalStack is *not* for everyone","classification":"lifecycle","trigger":{"event":"user.email_verified","type":"event"},"wait":"PT5M","guards":[],"suppressions":[],"channel":"in-app","cta":{"text":"Run your first AI search","url":"/app/search"},"segment":"All verified users","tags":["type:educational"],"format":"plain","from":"Vlad from SignalStack","goal":"Onboarding start — drive first search","comments":"In-app welcome banner. Short, punchy, drive to first search.","origin":"new"},{"id":"AQ-03","stage":"AQ","name":"Your first leads are 3 steps away (1/6)","classification":"lifecycle","trigger":{"event":"user.email_verified","type":"event"},"wait":"P1D","guards":[{"condition":"User has not completed onboarding","expression":"onboarding.completed == false"}],"suppressions":[{"condition":"User already performed a search","expression":"feature.ai_search_used == true"}],"channel":"email","cta":{"text":"Start your first search","url":"/app/search"},"segment":"Verified users who haven't searched yet","tags":["type:educational"],"format":"plain","from":"Vlad from SignalStack","goal":"Drive first meaningful action — AI search","comments":"Getting started guide. Numbered sequence (1/6) sets expectations. Walk through: define ICP → run AI search → see results. Keep it under 150 words.","origin":"new"},{"id":"AC-01","stage":"AC","name":"Find your perfect leads with AI search (2/6)","classification":"lifecycle","trigger":{"event":"user.email_verified","type":"event"},"wait":"P2D","guards":[{"condition":"User has not cancelled","expression":"user.plan != 'cancelled'"}],"suppressions":[{"condition":"User already used AI search","expression":"feature.ai_search_used == true"}],"channel":"email","cta":{"text":"Try AI search","url":"/app/search"},"segment":"Active users","tags":["type:educational","feature:ai-search"],"format":"plain","from":"Vlad from SignalStack","goal":"Drive first use of AI ICP targeting & search","comments":"Show how AI search finds leads matching their ICP. One specific use case. Suppress if already used.","origin":"new"},{"id":"AC-02","stage":"AC","name":"Find your perfect leads with AI search (2/6)","classification":"lifecycle","trigger":{"event":"user.email_verified","type":"event"},"wait":"P2D","guards":[{"condition":"User has not cancelled","expression":"user.plan != 'cancelled'"}],"suppressions":[{"condition":"User already used AI search","expression":"feature.ai_search_used == true"}],"channel":"in-app","cta":{"text":"Try AI search","url":"/app/search"},"segment":"Active users","tags":["type:educational","feature:ai-search"],"format":"plain","from":"Vlad from SignalStack","goal":"Drive first use of AI ICP targeting & search","comments":"In-app nudge to try AI search. Contextual, short.","origin":"new"},{"id":"AC-03","stage":"AC","name":"See the emails behind the companies (3/6)","classification":"lifecycle","trigger":{"event":"user.email_verified","type":"event"},"wait":"P3D","guards":[{"condition":"User has not cancelled","expression":"user.plan != 'cancelled'"}],"suppressions":[{"condition":"User already exported a contact","expression":"feature.contact_exported == true"}],"channel":"email","cta":{"text":"Reveal your first contacts","url":"/app/search"},"segment":"Active users","tags":["type:educational","feature:contact-export"],"format":"plain","from":"Vlad from SignalStack","goal":"Drive first contact reveal & export — THIS IS THE AHA MOMENT","comments":"This is the money email. Seeing verified emails for target companies is the aha moment. Make it tangible.","origin":"new"},{"id":"AC-04","stage":"AC","name":"See the emails behind the companies (3/6)","classification":"lifecycle","trigger":{"event":"user.email_verified","type":"event"},"wait":"P3D","guards":[{"condition":"User has not cancelled","expression":"user.plan != 'cancelled'"}],"suppressions":[{"condition":"User already exported a contact","expression":"feature.contact_exported == true"}],"channel":"in-app","cta":{"text":"Reveal your first contacts","url":"/app/search"},"segment":"Active users","tags":["type:educational","feature:contact-export"],"format":"plain","from":"Vlad from SignalStack","goal":"Drive first contact reveal & export — AHA MOMENT","comments":"In-app nudge to reveal contacts. Contextual prompt when viewing company results.","origin":"new"},{"id":"AC-05","stage":"AC","name":"Know who's ready to buy right now (4/6)","classification":"lifecycle","trigger":{"event":"user.email_verified","type":"event"},"wait":"P5D","guards":[{"condition":"User has not cancelled","expression":"user.plan != 'cancelled'"}],"suppressions":[{"condition":"User already used buyer intent","expression":"feature.buyer_intent_used == true"}],"channel":"email","cta":{"text":"See who's searching for you","url":"/app/buyer-intent"},"segment":"Active users","tags":["type:educational","feature:buyer-intent"],"format":"plain","from":"Vlad from SignalStack","goal":"Drive first use of buyer intent signals","comments":"Buyer intent across 7,500 topics. Frame it as: stop cold outreach, start warm outreach.","origin":"new"},{"id":"AC-06","stage":"AC","name":"Spy on their tech stack (5/6)","classification":"lifecycle","trigger":{"event":"user.email_verified","type":"event"},"wait":"P7D","guards":[{"condition":"User has not cancelled","expression":"user.plan != 'cancelled'"}],"suppressions":[{"condition":"User already used technographics","expression":"feature.technographics_used == true"}],"channel":"email","cta":{"text":"Filter by tech stack","url":"/app/search?filter=technographics"},"segment":"Active users","tags":["type:educational","feature:technographics"],"format":"plain","from":"Vlad from SignalStack","goal":"Drive first use of technographic profiling","comments":"Show how to find companies using specific technologies. Great for competitive displacement plays.","origin":"new"},{"id":"AC-07","stage":"AC","name":"Spy on their tech stack (5/6)","classification":"lifecycle","trigger":{"event":"user.email_verified","type":"event"},"wait":"P7D","guards":[{"condition":"User has not cancelled","expression":"user.plan != 'cancelled'"}],"suppressions":[{"condition":"User already used technographics","expression":"feature.technographics_used == true"}],"channel":"in-app","cta":{"text":"Filter by tech stack","url":"/app/search?filter=technographics"},"segment":"Active users","tags":["type:educational","feature:technographics"],"format":"plain","from":"Vlad from SignalStack","goal":"Drive first use of technographic profiling","comments":"In-app nudge to try tech stack filter. Show when user is in search view.","origin":"new"},{"id":"AC-08","stage":"AC","name":"Find companies with fresh funding (5.5/6)","classification":"lifecycle","trigger":{"event":"user.email_verified","type":"event"},"wait":"P10D","guards":[{"condition":"User has not cancelled","expression":"user.plan != 'cancelled'"}],"suppressions":[{"condition":"User already used funding insights","expression":"feature.funding_insights_used == true"}],"channel":"email","cta":{"text":"Find funded companies","url":"/app/search?filter=funding"},"segment":"Active users","tags":["type:educational","feature:funding-insights"],"format":"plain","from":"Vlad from SignalStack","goal":"Drive first use of funding insights","comments":"Companies that just raised money are actively hiring, buying tools, and expanding. Frame funding data as a timing signal.","origin":"new"},{"id":"AC-09","stage":"AC","name":"Push leads straight to your CRM (6/6)","classification":"lifecycle","trigger":{"event":"user.email_verified","type":"event"},"wait":"P14D","guards":[{"condition":"User has not cancelled","expression":"user.plan != 'cancelled'"}],"suppressions":[{"condition":"User already connected a CRM","expression":"feature.crm_integration_connected == true"}],"channel":"email","cta":{"text":"Connect your CRM","url":"/app/integrations"},"segment":"Active users","tags":["type:educational","feature:crm-integration"],"format":"plain","from":"Vlad from SignalStack","goal":"Drive CRM integration (Pipedrive, HubSpot, Lemlist)","comments":"Final onboarding step. Complete the workflow: find leads → reveal contacts → push to CRM → start outreach.","origin":"new"},{"id":"AC-10","stage":"AC","name":"Push leads straight to your CRM (6/6)","classification":"lifecycle","trigger":{"event":"user.email_verified","type":"event"},"wait":"P14D","guards":[{"condition":"User has not cancelled","expression":"user.plan != 'cancelled'"}],"suppressions":[{"condition":"User already connected a CRM","expression":"feature.crm_integration_connected == true"}],"channel":"in-app","cta":{"text":"Connect your CRM","url":"/app/integrations"},"segment":"Active users","tags":["type:educational","feature:crm-integration"],"format":"plain","from":"Vlad from SignalStack","goal":"Drive CRM integration (Pipedrive, HubSpot, Lemlist)","comments":"In-app prompt to connect CRM. Show in integrations area or after an export.","origin":"new"},{"id":"RV-01","stage":"RV","name":"Your credits are running low","classification":"lifecycle","trigger":{"event":"credits.running_low","type":"event"},"wait":"P0D","guards":[{"condition":"User is on free or basic plan","expression":"user.plan in ['free', 'basic']"}],"suppressions":[],"channel":"email","cta":{"text":"Upgrade for more credits","url":"/pricing"},"segment":"Free and Basic users approaching credit limit","tags":["type:promotional","segment:active"],"format":"plain","from":"Vlad from SignalStack","goal":"Drive upgrade via natural usage growth","comments":"Strongest upgrade signal. Show credits used vs remaining. Frame upgrade as unlocking momentum.","origin":"new"},{"id":"RV-02","stage":"RV","name":"Your credits are running low","classification":"lifecycle","trigger":{"event":"credits.running_low","type":"event"},"wait":"P0D","guards":[{"condition":"User is on free or basic plan","expression":"user.plan in ['free', 'basic']"}],"suppressions":[],"channel":"in-app","cta":{"text":"Upgrade for more credits","url":"/pricing"},"segment":"Free and Basic users approaching credit limit","tags":["type:promotional","segment:active"],"format":"plain","from":"Vlad from SignalStack","goal":"Drive upgrade via natural usage growth","comments":"In-app banner when credits are low. Show remaining count and upgrade CTA.","origin":"new"},{"id":"RV-03","stage":"RV","name":"You've used all your credits","classification":"lifecycle","trigger":{"event":"credits.exhausted","type":"event"},"wait":"P0D","guards":[{"condition":"User has not upgraded","expression":"user.plan != 'business'"}],"suppressions":[],"channel":"email","cta":{"text":"Upgrade now","url":"/pricing"},"segment":"Users who exhausted credits","tags":["type:promotional","priority:high"],"format":"plain","from":"Vlad from SignalStack","goal":"Convert credit-exhausted users to paid","comments":"Be direct: momentum shouldn't stop because of a credit limit. Show what the next tier unlocks.","origin":"new"},{"id":"RV-04","stage":"RV","name":"You've used all your credits","classification":"lifecycle","trigger":{"event":"credits.exhausted","type":"event"},"wait":"P0D","guards":[{"condition":"User has not upgraded","expression":"user.plan != 'business'"}],"suppressions":[],"channel":"in-app","cta":{"text":"Upgrade now","url":"/pricing"},"segment":"Users who exhausted credits","tags":["type:promotional","priority:high"],"format":"plain","from":"Vlad from SignalStack","goal":"Convert credit-exhausted users to paid","comments":"In-app blocker when credits hit zero. Show usage stats and upgrade options.","origin":"new"},{"id":"RV-05","stage":"RV","name":"Your trial ends in {{days_left}} days","classification":"lifecycle","trigger":{"event":"trial.ending_soon","type":"event"},"wait":"P0D","guards":[{"condition":"User is on trial","expression":"user.plan == 'trial'"}],"suppressions":[],"channel":"email","cta":{"text":"Choose a plan","url":"/pricing"},"segment":"Trial users, 3 days before expiry","tags":["type:promotional","segment:trial"],"format":"plain","from":"Vlad from SignalStack","goal":"Convert trial to paid","comments":"Show usage stats. Make them feel the loss of stopping. Reassure data is safe.","origin":"new"},{"id":"RV-06","stage":"RV","name":"Your trial ends in {{days_left}} days","classification":"lifecycle","trigger":{"event":"trial.ending_soon","type":"event"},"wait":"P0D","guards":[{"condition":"User is on trial","expression":"user.plan == 'trial'"}],"suppressions":[],"channel":"in-app","cta":{"text":"Choose a plan","url":"/pricing"},"segment":"Trial users, 3 days before expiry","tags":["type:promotional","segment:trial"],"format":"plain","from":"Vlad from SignalStack","goal":"Convert trial to paid","comments":"In-app banner showing trial countdown and usage stats.","origin":"new"},{"id":"RV-07","stage":"RV","name":"Your trial expired — here's what you keep","classification":"lifecycle","trigger":{"event":"trial.expired","type":"event"},"wait":"P0D","guards":[{"condition":"User has not upgraded","expression":"user.plan != 'basic' && user.plan != 'business'"}],"suppressions":[],"channel":"email","cta":{"text":"Choose a plan","url":"/pricing"},"segment":"Expired trial users","tags":["type:promotional","segment:trial"],"format":"plain","from":"Vlad from SignalStack","goal":"Win back expired trial user","comments":"Reassure data is safe. Remind what they accomplished. Offer Basic at $19/mo as low-friction entry.","origin":"new"},{"id":"RT-01","stage":"RT","name":"Your week in SignalStack","classification":"lifecycle","trigger":{"event":"scheduled","type":"scheduled","schedule":"every friday 9am"},"wait":"P0D","guards":[{"condition":"User was active this week","expression":"user.sessions_this_week >= 1"}],"suppressions":[],"channel":"email","cta":{"text":"Find more leads","url":"/app/search"},"segment":"Active users","tags":["type:behavioral"],"format":"plain","from":"Vlad from SignalStack","goal":"Reinforce value, drive continued usage","comments":"Weekly recap: searches run, contacts revealed, emails found, credits used/remaining.","origin":"new"},{"id":"RT-02","stage":"RT","name":"Your leads are waiting","classification":"lifecycle","trigger":{"event":"user.inactive_3_days","type":"behavioral"},"wait":"P0D","guards":[],"suppressions":[],"channel":"email","cta":{"text":"Jump back in","url":"/app/search"},"segment":"Users inactive 3 days","tags":["type:behavioral","segment:dormant"],"format":"plain","from":"Vlad from SignalStack","goal":"Re-engage before habit breaks","comments":"Soft nudge. Mention new buyer intent data available. Low pressure.","origin":"new"},{"id":"RT-03","stage":"RT","name":"Your leads are waiting","classification":"lifecycle","trigger":{"event":"user.inactive_3_days","type":"behavioral"},"wait":"P0D","guards":[],"suppressions":[],"channel":"in-app","cta":{"text":"Jump back in","url":"/app/search"},"segment":"Users inactive 3 days","tags":["type:behavioral","segment:dormant"],"format":"plain","from":"Vlad from SignalStack","goal":"Re-engage before habit breaks","comments":"In-app notification when user returns after 3 days. Show new matches since last visit.","origin":"new"},{"id":"RT-04","stage":"RT","name":"While you were away, {{prospect_count}} new companies matched your ICP","classification":"lifecycle","trigger":{"event":"user.inactive_7_days","type":"behavioral"},"wait":"P0D","guards":[],"suppressions":[],"channel":"email","cta":{"text":"See new matches","url":"/app/search"},"segment":"Users inactive 7 days","tags":["type:behavioral","segment:dormant"],"format":"plain","from":"Vlad from SignalStack","goal":"Show value they're missing","comments":"Make inactivity feel like missed opportunity. Show what's new in their ICP matches.","origin":"new"},{"id":"RT-05","stage":"RT","name":"Should I close your account?","classification":"lifecycle","trigger":{"event":"user.inactive_14_days","type":"behavioral"},"wait":"P0D","guards":[],"suppressions":[],"channel":"email","cta":{"text":"No, I'm coming back","url":"/app/search"},"segment":"Users inactive 14 days","tags":["type:behavioral","segment:churning","priority:high"],"format":"plain","from":"Vlad from SignalStack","goal":"Last attempt before marking churned","comments":"Breakup email. Bold subject line. Ask what went wrong if they're not coming back.","origin":"new"},{"id":"RF-01","stage":"RF","name":"Your team is missing out","classification":"lifecycle","trigger":{"event":"milestone.first_success","type":"event"},"wait":"P1D","guards":[],"suppressions":[{"condition":"User already invited a teammate","expression":"user.teammates_invited >= 1"}],"channel":"email","cta":{"text":"Invite your team","url":"/app/settings/team"},"segment":"Users who hit first milestone (e.g., 50+ contacts exported)","tags":["type:promotional"],"format":"plain","from":"Vlad from SignalStack","goal":"Organic growth via team invites","comments":"Trigger after first export milestone. Frame as: imagine what your whole team could find.","origin":"new"},{"id":"RF-02","stage":"RF","name":"Your team is missing out","classification":"lifecycle","trigger":{"event":"milestone.first_success","type":"event"},"wait":"P1D","guards":[],"suppressions":[{"condition":"User already invited a teammate","expression":"user.teammates_invited >= 1"}],"channel":"in-app","cta":{"text":"Invite your team","url":"/app/settings/team"},"segment":"Users who hit first milestone (e.g., 50+ contacts exported)","tags":["type:promotional"],"format":"plain","from":"Vlad from SignalStack","goal":"Organic growth via team invites","comments":"In-app prompt after milestone. Show team collaboration benefits.","origin":"new"},{"id":"RF-03","stage":"RF","name":"Know someone who'd love SignalStack?","classification":"lifecycle","trigger":{"event":"user.active_30_days","type":"behavioral"},"wait":"P0D","guards":[],"suppressions":[],"channel":"email","cta":{"text":"Share SignalStack","url":"/app/referral"},"segment":"Power users (30+ days active)","tags":["type:promotional"],"format":"plain","from":"Vlad from SignalStack","goal":"Turn power users into advocates","comments":"Reference the affiliate program. Frame as: help a friend ditch the expensive stuff.","origin":"new"}]</script>
+  <script id="analysis-data" type="application/json">{"path":"fresh","company":{"name":"SignalStack","product_type":"AI-powered B2B lead generation","target_audience":"SDRs, small sales teams, and startups building outbound outreach from scratch","key_value_prop":"Find qualified B2B leads 10X faster with AI-driven targeting, 180M+ verified contacts, and buyer intent signals — at a fraction of competitor pricing","aha_moment":"Seeing correct, verified emails for contacts at companies they want to target","key_features":["AI ICP targeting & search","Contact database & email reveal","Buyer intent signals","Technographics profiling","Funding insights","CRM integrations (Pipedrive, HubSpot, Lemlist)"],"pricing_model":"Free tier (50 credits/mo), Basic $19/mo per user (1K credits), Business $89/mo per user (10K credits). No credit card required for signup."},"channels":["email","in-app"],"voice":{"tone":"Direct, personal, genuinely helpful — feels like a smart friend, not a corporation. Conversational but confident. Not afraid to be bold.","formality":2,"emoji_usage":"none","signature_style":"First name only","sample_phrases":["Tough, right!?","I value time and wish neither of us waste it","just in case you need some help","way, way above what our usual customers get","way to go!"],"sender_personas":[{"name":"Vlad","role":"from SignalStack","use_for":["welcome","milestones","feature announcements","tips","onboarding","personal outreach"]},{"name":"SignalStack Team","role":"System","use_for":["transactional","system messages"]}]},"events":{"identity":["user.signed_up","user.email_verified","user.profile_completed","user.invited_teammate"],"activation":["feature.ai_search_used_first_time","feature.contact_exported_first_time","feature.buyer_intent_used_first_time","feature.technographics_used_first_time","feature.funding_insights_used_first_time","feature.crm_integration_connected","onboarding.completed"],"engagement":["search.performed","contact.revealed","contact.exported","list.created","export.csv_downloaded","integration.synced"],"conversion":["trial.started","trial.ending_soon","trial.expired","credits.running_low","credits.exhausted","subscription.created","subscription.upgraded","subscription.downgraded","subscription.cancelled"],"retention":["user.inactive_3_days","user.inactive_7_days","user.inactive_14_days","usage.weekly_summary","credits.monthly_reset","milestone.reached"]},"tags":{"sources":["organic","referral","partner:pipedrive","partner:hubspot","partner:lemlist"],"plans":["free","basic","business"],"segments":["new","power-user","dormant","churning"],"features":["ai-search","buyer-intent","technographics","funding-insights","crm-integration","contact-export"]},"existing":null,"recommendations":["Use Guided Training pattern for activation — walk users through first search → reveal → export workflow step by step","Suppress feature emails when feature already used (don't nag about what they've discovered)","Add credit-based revenue triggers (credits.running_low, credits.exhausted) alongside trial-based ones — this is a usage-gated product","In-app nudges for activation features at point of use (e.g., prompt buyer intent when viewing a company)","Re-engagement sequence at 3/7/14 days — SDRs who stop prospecting for a week are likely evaluating competitors","Welcome email from Vlad: bold, direct, make it clear SignalStack isn't for everyone (matches the voice samples)"]}</script>
+
+  <header class="border-b pb-4 mb-6">
+    <h1 class="text-2xl font-bold">SignalStack</h1>
+    <p class="text-gray-500">Lifecycle Messaging Overview</p>
+  </header>
+
+  <!-- Company Overview -->
+  <section class="mb-8">
+    <h2 class="text-lg font-semibold mb-2">Company Overview</h2>
+    <div class="grid grid-cols-2 gap-4 text-sm">
+      <div><strong>Product Type:</strong> AI-powered B2B lead generation</div>
+      <div><strong>Target Audience:</strong> SDRs, small sales teams, and startups building outbound outreach from scratch</div>
+      <div><strong>Value Prop:</strong> Find qualified B2B leads 10X faster with AI-driven targeting, 180M+ verified contacts, and buyer intent signals — at a fraction of competitor pricing</div>
+      <div><strong>Aha Moment:</strong> Seeing correct, verified emails for contacts at companies they want to target</div>
+      <div><strong>Pricing:</strong> Free tier (50 credits/mo), Basic $19/mo per user (1K credits), Business $89/mo per user (10K credits). No credit card required for signup.</div>
+      <div><strong>Key Features:</strong> AI ICP targeting &amp; search, Contact database &amp; email reveal, Buyer intent signals, Technographics profiling, Funding insights, CRM integrations (Pipedrive, HubSpot, Lemlist)</div>
+    </div>
+  </section>
+
+  <!-- AARRR Strategy -->
+  <section class="mb-8">
+    <h2 class="text-lg font-semibold mb-2">AARRR Strategy Summary</h2>
+    <div class="text-sm space-y-1">
+      <p><strong>Total Messages:</strong> 33 (5 transactional, 28 lifecycle)</p>
+      <p><strong>Channels:</strong> email, in-app</p>
+      <div class="flex gap-4 mt-2">
+        <div class="text-center"><span class="stage-badge" style="background:#f0f0f0;color:#666">Transactional</span><div class="text-lg font-bold mt-1">5</div></div>
+        <div class="text-center"><span class="stage-badge" style="background:#d4edda;color:#28a745">Acquisition</span><div class="text-lg font-bold mt-1">3</div></div>
+        <div class="text-center"><span class="stage-badge" style="background:#cce5ff;color:#007bff">Activation</span><div class="text-lg font-bold mt-1">10</div></div>
+        <div class="text-center"><span class="stage-badge" style="background:#fff3cd;color:#ffc107">Revenue</span><div class="text-lg font-bold mt-1">7</div></div>
+        <div class="text-center"><span class="stage-badge" style="background:#ffe5cc;color:#fd7e14">Retention</span><div class="text-lg font-bold mt-1">5</div></div>
+        <div class="text-center"><span class="stage-badge" style="background:#e8d5f5;color:#6f42c1">Referral</span><div class="text-lg font-bold mt-1">3</div></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="page-break"></div>
+
+  <!-- Condensed Matrix -->
+  <section class="mb-8">
+    <h2 class="text-lg font-semibold mb-2">Message Inventory</h2>
+    <table class="w-full text-sm border">
+      <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
+        <tr>
+          <th class="px-3 py-2 text-left">ID</th>
+          <th class="px-3 py-2 text-left">Stage</th>
+          <th class="px-3 py-2 text-left">Name</th>
+          <th class="px-3 py-2 text-left">Trigger</th>
+          <th class="px-3 py-2 text-left">Wait</th>
+          <th class="px-3 py-2 text-left">Channel</th>
+        </tr>
+      </thead>
+      <tbody>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">TX-01</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#f0f0f0;color:#666">Transactional</span></td>
+        <td class="px-3 py-1">Verify Your Email</td>
+        <td class="px-3 py-1 text-xs">user.signed_up</td>
+        <td class="px-3 py-1 font-mono text-xs">P0D</td>
+        <td class="px-3 py-1 text-xs">email</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">TX-02</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#f0f0f0;color:#666">Transactional</span></td>
+        <td class="px-3 py-1">Password Reset</td>
+        <td class="px-3 py-1 text-xs">user.password_reset_requested</td>
+        <td class="px-3 py-1 font-mono text-xs">P0D</td>
+        <td class="px-3 py-1 text-xs">email</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">TX-03</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#f0f0f0;color:#666">Transactional</span></td>
+        <td class="px-3 py-1">Payment Receipt</td>
+        <td class="px-3 py-1 text-xs">subscription.payment_processed</td>
+        <td class="px-3 py-1 font-mono text-xs">P0D</td>
+        <td class="px-3 py-1 text-xs">email</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">TX-04</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#f0f0f0;color:#666">Transactional</span></td>
+        <td class="px-3 py-1">Plan Change Confirmation</td>
+        <td class="px-3 py-1 text-xs">subscription.changed</td>
+        <td class="px-3 py-1 font-mono text-xs">P0D</td>
+        <td class="px-3 py-1 text-xs">email</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">TX-05</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#f0f0f0;color:#666">Transactional</span></td>
+        <td class="px-3 py-1">Account Deletion Confirmation</td>
+        <td class="px-3 py-1 text-xs">user.deletion_requested</td>
+        <td class="px-3 py-1 font-mono text-xs">P0D</td>
+        <td class="px-3 py-1 text-xs">email</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">AQ-01</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#d4edda;color:#28a745">Acquisition</span></td>
+        <td class="px-3 py-1">SignalStack is *not* for everyone</td>
+        <td class="px-3 py-1 text-xs">user.email_verified</td>
+        <td class="px-3 py-1 font-mono text-xs">PT5M</td>
+        <td class="px-3 py-1 text-xs">email</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">AQ-02</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#d4edda;color:#28a745">Acquisition</span></td>
+        <td class="px-3 py-1">SignalStack is *not* for everyone</td>
+        <td class="px-3 py-1 text-xs">user.email_verified</td>
+        <td class="px-3 py-1 font-mono text-xs">PT5M</td>
+        <td class="px-3 py-1 text-xs">in-app</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">AQ-03</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#d4edda;color:#28a745">Acquisition</span></td>
+        <td class="px-3 py-1">Your first leads are 3 steps away (1/6)</td>
+        <td class="px-3 py-1 text-xs">user.email_verified</td>
+        <td class="px-3 py-1 font-mono text-xs">P1D</td>
+        <td class="px-3 py-1 text-xs">email</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">AC-01</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#cce5ff;color:#007bff">Activation</span></td>
+        <td class="px-3 py-1">Find your perfect leads with AI search (2/6)</td>
+        <td class="px-3 py-1 text-xs">user.email_verified</td>
+        <td class="px-3 py-1 font-mono text-xs">P2D</td>
+        <td class="px-3 py-1 text-xs">email</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">AC-02</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#cce5ff;color:#007bff">Activation</span></td>
+        <td class="px-3 py-1">Find your perfect leads with AI search (2/6)</td>
+        <td class="px-3 py-1 text-xs">user.email_verified</td>
+        <td class="px-3 py-1 font-mono text-xs">P2D</td>
+        <td class="px-3 py-1 text-xs">in-app</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">AC-03</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#cce5ff;color:#007bff">Activation</span></td>
+        <td class="px-3 py-1">See the emails behind the companies (3/6)</td>
+        <td class="px-3 py-1 text-xs">user.email_verified</td>
+        <td class="px-3 py-1 font-mono text-xs">P3D</td>
+        <td class="px-3 py-1 text-xs">email</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">AC-04</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#cce5ff;color:#007bff">Activation</span></td>
+        <td class="px-3 py-1">See the emails behind the companies (3/6)</td>
+        <td class="px-3 py-1 text-xs">user.email_verified</td>
+        <td class="px-3 py-1 font-mono text-xs">P3D</td>
+        <td class="px-3 py-1 text-xs">in-app</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">AC-05</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#cce5ff;color:#007bff">Activation</span></td>
+        <td class="px-3 py-1">Know who&#039;s ready to buy right now (4/6)</td>
+        <td class="px-3 py-1 text-xs">user.email_verified</td>
+        <td class="px-3 py-1 font-mono text-xs">P5D</td>
+        <td class="px-3 py-1 text-xs">email</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">AC-06</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#cce5ff;color:#007bff">Activation</span></td>
+        <td class="px-3 py-1">Spy on their tech stack (5/6)</td>
+        <td class="px-3 py-1 text-xs">user.email_verified</td>
+        <td class="px-3 py-1 font-mono text-xs">P7D</td>
+        <td class="px-3 py-1 text-xs">email</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">AC-07</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#cce5ff;color:#007bff">Activation</span></td>
+        <td class="px-3 py-1">Spy on their tech stack (5/6)</td>
+        <td class="px-3 py-1 text-xs">user.email_verified</td>
+        <td class="px-3 py-1 font-mono text-xs">P7D</td>
+        <td class="px-3 py-1 text-xs">in-app</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">AC-08</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#cce5ff;color:#007bff">Activation</span></td>
+        <td class="px-3 py-1">Find companies with fresh funding (5.5/6)</td>
+        <td class="px-3 py-1 text-xs">user.email_verified</td>
+        <td class="px-3 py-1 font-mono text-xs">P10D</td>
+        <td class="px-3 py-1 text-xs">email</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">AC-09</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#cce5ff;color:#007bff">Activation</span></td>
+        <td class="px-3 py-1">Push leads straight to your CRM (6/6)</td>
+        <td class="px-3 py-1 text-xs">user.email_verified</td>
+        <td class="px-3 py-1 font-mono text-xs">P14D</td>
+        <td class="px-3 py-1 text-xs">email</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">AC-10</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#cce5ff;color:#007bff">Activation</span></td>
+        <td class="px-3 py-1">Push leads straight to your CRM (6/6)</td>
+        <td class="px-3 py-1 text-xs">user.email_verified</td>
+        <td class="px-3 py-1 font-mono text-xs">P14D</td>
+        <td class="px-3 py-1 text-xs">in-app</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">RV-01</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#fff3cd;color:#ffc107">Revenue</span></td>
+        <td class="px-3 py-1">Your credits are running low</td>
+        <td class="px-3 py-1 text-xs">credits.running_low</td>
+        <td class="px-3 py-1 font-mono text-xs">P0D</td>
+        <td class="px-3 py-1 text-xs">email</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">RV-02</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#fff3cd;color:#ffc107">Revenue</span></td>
+        <td class="px-3 py-1">Your credits are running low</td>
+        <td class="px-3 py-1 text-xs">credits.running_low</td>
+        <td class="px-3 py-1 font-mono text-xs">P0D</td>
+        <td class="px-3 py-1 text-xs">in-app</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">RV-03</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#fff3cd;color:#ffc107">Revenue</span></td>
+        <td class="px-3 py-1">You&#039;ve used all your credits</td>
+        <td class="px-3 py-1 text-xs">credits.exhausted</td>
+        <td class="px-3 py-1 font-mono text-xs">P0D</td>
+        <td class="px-3 py-1 text-xs">email</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">RV-04</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#fff3cd;color:#ffc107">Revenue</span></td>
+        <td class="px-3 py-1">You&#039;ve used all your credits</td>
+        <td class="px-3 py-1 text-xs">credits.exhausted</td>
+        <td class="px-3 py-1 font-mono text-xs">P0D</td>
+        <td class="px-3 py-1 text-xs">in-app</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">RV-05</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#fff3cd;color:#ffc107">Revenue</span></td>
+        <td class="px-3 py-1">Your trial ends in {{days_left}} days</td>
+        <td class="px-3 py-1 text-xs">trial.ending_soon</td>
+        <td class="px-3 py-1 font-mono text-xs">P0D</td>
+        <td class="px-3 py-1 text-xs">email</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">RV-06</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#fff3cd;color:#ffc107">Revenue</span></td>
+        <td class="px-3 py-1">Your trial ends in {{days_left}} days</td>
+        <td class="px-3 py-1 text-xs">trial.ending_soon</td>
+        <td class="px-3 py-1 font-mono text-xs">P0D</td>
+        <td class="px-3 py-1 text-xs">in-app</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">RV-07</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#fff3cd;color:#ffc107">Revenue</span></td>
+        <td class="px-3 py-1">Your trial expired — here&#039;s what you keep</td>
+        <td class="px-3 py-1 text-xs">trial.expired</td>
+        <td class="px-3 py-1 font-mono text-xs">P0D</td>
+        <td class="px-3 py-1 text-xs">email</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">RT-01</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#ffe5cc;color:#fd7e14">Retention</span></td>
+        <td class="px-3 py-1">Your week in SignalStack</td>
+        <td class="px-3 py-1 text-xs">scheduled</td>
+        <td class="px-3 py-1 font-mono text-xs">P0D</td>
+        <td class="px-3 py-1 text-xs">email</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">RT-02</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#ffe5cc;color:#fd7e14">Retention</span></td>
+        <td class="px-3 py-1">Your leads are waiting</td>
+        <td class="px-3 py-1 text-xs">user.inactive_3_days</td>
+        <td class="px-3 py-1 font-mono text-xs">P0D</td>
+        <td class="px-3 py-1 text-xs">email</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">RT-03</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#ffe5cc;color:#fd7e14">Retention</span></td>
+        <td class="px-3 py-1">Your leads are waiting</td>
+        <td class="px-3 py-1 text-xs">user.inactive_3_days</td>
+        <td class="px-3 py-1 font-mono text-xs">P0D</td>
+        <td class="px-3 py-1 text-xs">in-app</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">RT-04</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#ffe5cc;color:#fd7e14">Retention</span></td>
+        <td class="px-3 py-1">While you were away, {{prospect_count}} new companies matched your ICP</td>
+        <td class="px-3 py-1 text-xs">user.inactive_7_days</td>
+        <td class="px-3 py-1 font-mono text-xs">P0D</td>
+        <td class="px-3 py-1 text-xs">email</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">RT-05</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#ffe5cc;color:#fd7e14">Retention</span></td>
+        <td class="px-3 py-1">Should I close your account?</td>
+        <td class="px-3 py-1 text-xs">user.inactive_14_days</td>
+        <td class="px-3 py-1 font-mono text-xs">P0D</td>
+        <td class="px-3 py-1 text-xs">email</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">RF-01</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#e8d5f5;color:#6f42c1">Referral</span></td>
+        <td class="px-3 py-1">Your team is missing out</td>
+        <td class="px-3 py-1 text-xs">milestone.first_success</td>
+        <td class="px-3 py-1 font-mono text-xs">P1D</td>
+        <td class="px-3 py-1 text-xs">email</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">RF-02</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#e8d5f5;color:#6f42c1">Referral</span></td>
+        <td class="px-3 py-1">Your team is missing out</td>
+        <td class="px-3 py-1 text-xs">milestone.first_success</td>
+        <td class="px-3 py-1 font-mono text-xs">P1D</td>
+        <td class="px-3 py-1 text-xs">in-app</td>
+      </tr>
+<tr class="border-t">
+        <td class="px-3 py-1 font-mono text-xs">RF-03</td>
+        <td class="px-3 py-1"><span class="stage-badge" style="background:#e8d5f5;color:#6f42c1">Referral</span></td>
+        <td class="px-3 py-1">Know someone who&#039;d love SignalStack?</td>
+        <td class="px-3 py-1 text-xs">user.active_30_days</td>
+        <td class="px-3 py-1 font-mono text-xs">P0D</td>
+        <td class="px-3 py-1 text-xs">email</td>
+      </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Tag Summary -->
+  <section class="mb-8">
+    <h2 class="text-lg font-semibold mb-2">Tag Summary</h2>
+    <div><span class="tag-pill">feature:ai-search (2)</span> <span class="tag-pill">feature:buyer-intent (1)</span> <span class="tag-pill">feature:contact-export (2)</span> <span class="tag-pill">feature:crm-integration (2)</span> <span class="tag-pill">feature:funding-insights (1)</span> <span class="tag-pill">feature:technographics (2)</span> <span class="tag-pill">priority:high (3)</span> <span class="tag-pill">segment:active (2)</span> <span class="tag-pill">segment:churning (1)</span> <span class="tag-pill">segment:dormant (3)</span> <span class="tag-pill">segment:trial (3)</span> <span class="tag-pill">type:behavioral (5)</span> <span class="tag-pill">type:educational (13)</span> <span class="tag-pill">type:promotional (10)</span> <span class="tag-pill">type:transactional (5)</span></div>
+  </section>
+
+  <!-- Implementation Order -->
+  <section class="mb-8">
+    <h2 class="text-lg font-semibold mb-2">Recommended Implementation Order</h2>
+    <table class="text-sm">
+      <thead class="text-xs text-gray-500 uppercase">
+        <tr><th class="px-3 py-1 text-left">Priority</th><th class="px-3 py-1 text-left">Stage</th><th class="px-3 py-1 text-left">Scope</th></tr>
+      </thead>
+      <tbody>
+<tr><td class="px-3 py-1">1</td><td class="px-3 py-1"><span class="stage-badge" style="background:#f0f0f0;color:#666">Transactional</span></td><td class="px-3 py-1">5 messages</td></tr>
+<tr><td class="px-3 py-1">2</td><td class="px-3 py-1"><span class="stage-badge" style="background:#d4edda;color:#28a745">Acquisition</span></td><td class="px-3 py-1">3 messages</td></tr>
+<tr><td class="px-3 py-1">3</td><td class="px-3 py-1"><span class="stage-badge" style="background:#cce5ff;color:#007bff">Activation</span></td><td class="px-3 py-1">10 messages</td></tr>
+<tr><td class="px-3 py-1">4</td><td class="px-3 py-1"><span class="stage-badge" style="background:#fff3cd;color:#ffc107">Revenue</span></td><td class="px-3 py-1">7 messages</td></tr>
+<tr><td class="px-3 py-1">5</td><td class="px-3 py-1"><span class="stage-badge" style="background:#ffe5cc;color:#fd7e14">Retention</span></td><td class="px-3 py-1">5 messages</td></tr>
+<tr><td class="px-3 py-1">6</td><td class="px-3 py-1"><span class="stage-badge" style="background:#e8d5f5;color:#6f42c1">Referral</span></td><td class="px-3 py-1">3 messages</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Recommendations -->
+  <section class="mb-8">
+    <h2 class="text-lg font-semibold mb-2">Recommendations</h2>
+    <ul class="list-disc list-inside text-sm space-y-1">
+      <li>Use Guided Training pattern for activation — walk users through first search → reveal → export workflow step by step</li>
+      <li>Suppress feature emails when feature already used (don&#039;t nag about what they&#039;ve discovered)</li>
+      <li>Add credit-based revenue triggers (credits.running_low, credits.exhausted) alongside trial-based ones — this is a usage-gated product</li>
+      <li>In-app nudges for activation features at point of use (e.g., prompt buyer intent when viewing a company)</li>
+      <li>Re-engagement sequence at 3/7/14 days — SDRs who stop prospecting for a week are likely evaluating competitors</li>
+      <li>Welcome email from Vlad: bold, direct, make it clear SignalStack isn&#039;t for everyone (matches the voice samples)</li>
+    </ul>
+  </section>
+
+  <footer style="text-align:center;padding:24px 0 8px;margin-top:2rem;border-top:1px solid #e5e7eb;font-size:0.8rem;color:#9ca3af">
+    <a href="https://github.com/sr-kai/mango-lollipop" style="color:#6b7280;text-decoration:none;font-weight:600">Mango Lollipop</a> &mdash; AI-powered lifecycle messaging for SaaS<br>
+    Made by Sasha Kai with probably too much coffee.
+  </footer>
+</body>
+</html>

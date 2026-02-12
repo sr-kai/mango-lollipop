@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SignalStack - Message Previews</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Layout */
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    .viewer-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; background: #fff; border-bottom: 1px solid #e5e7eb; }
+    .viewer-header a { color: #3b82f6; text-decoration: none; font-size: 0.875rem; }
+    .viewer-header a:hover { text-decoration: underline; }
+    .viewer-layout { display: flex; min-height: calc(100vh - 57px); }
+
+    /* Sidebar */
+    .viewer-sidebar { width: 260px; min-width: 260px; background: #fff; border-right: 1px solid #e5e7eb; overflow-y: auto; padding: 12px 8px; }
+    .stage-group { margin-bottom: 8px; }
+    .stage-group-header { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px; }
+    .stage-badge { display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; }
+    .msg-link { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 6px; text-decoration: none; color: #374151; font-size: 0.8rem; cursor: pointer; }
+    .msg-link:hover { background: #f3f4f6; }
+    .msg-link.active { background: #dbeafe; color: #1d4ed8; }
+    .msg-link-id { font-family: monospace; font-size: 0.7rem; color: #9ca3af; min-width: 38px; }
+    .msg-link.active .msg-link-id { color: #3b82f6; }
+    .msg-link-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .msg-link-ch { font-size: 0.65rem; color: #9ca3af; text-transform: uppercase; }
+
+    /* Preview area */
+    .preview-main { flex: 1; background: #f3f4f6; padding: 32px; overflow-y: auto; }
+    .preview-empty { display: flex; align-items: center; justify-content: center; height: 60vh; color: #9ca3af; font-size: 1rem; }
+    .preview-wrapper { max-width: 740px; margin: 0 auto; }
+
+    /* Shared preview elements */
+    .preview-cta { display: inline-block; padding: 10px 24px; border-radius: 6px; color: #fff; font-weight: 600; font-size: 0.9rem; text-decoration: none; cursor: default; }
+    .token { background: #fef3c7; color: #92400e; padding: 1px 4px; border-radius: 3px; font-family: monospace; font-size: 0.85em; }
+    .no-content-notice { background: #f9fafb; border: 2px dashed #d1d5db; border-radius: 8px; padding: 24px; text-align: center; color: #6b7280; margin: 20px; }
+
+    /* --- Email preview --- */
+    .email-frame { background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); overflow: hidden; max-width: 640px; margin: 0 auto; }
+    .email-toolbar { background: #f9fafb; padding: 10px 16px; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid #e5e7eb; }
+    .email-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .email-header { padding: 16px 20px; border-bottom: 1px solid #f3f4f6; font-size: 0.85rem; color: #6b7280; }
+    .email-header div { margin-bottom: 4px; }
+    .email-header .email-label { font-weight: 600; color: #374151; display: inline-block; width: 70px; }
+    .email-subject-line { font-size: 1.1rem; font-weight: 600; color: #111827; }
+    .email-preheader { font-size: 0.8rem; color: #9ca3af; padding: 0 20px; margin-top: 4px; }
+    .email-body { padding: 24px 20px; font-size: 0.9rem; line-height: 1.7; color: #374151; }
+    .email-body p { margin-bottom: 14px; }
+    .email-body .preview-cta { background: #3b82f6; margin: 16px 0; }
+
+    /* --- In-app preview --- */
+    .inapp-backdrop { background: rgba(0,0,0,0.3); border-radius: 12px; padding: 60px 20px; display: flex; justify-content: center; align-items: flex-start; min-height: 300px; }
+    .inapp-modal { background: #fff; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.12); padding: 28px 24px; max-width: 380px; width: 100%; position: relative; }
+    .inapp-close { position: absolute; top: 12px; right: 16px; background: none; border: none; font-size: 1.2rem; color: #9ca3af; cursor: default; }
+    .inapp-title { font-size: 1.1rem; font-weight: 700; color: #111827; margin-bottom: 12px; }
+    .inapp-body { font-size: 0.9rem; color: #4b5563; line-height: 1.6; margin-bottom: 20px; }
+    .inapp-modal .preview-cta { background: #8b5cf6; display: block; text-align: center; border-radius: 10px; }
+
+    /* --- SMS preview --- */
+    .sms-phone { background: #fff; border-radius: 32px; box-shadow: 0 4px 24px rgba(0,0,0,0.10); max-width: 340px; margin: 0 auto; overflow: hidden; border: 6px solid #1a1a1a; }
+    .sms-status-bar { background: #1a1a1a; padding: 8px 20px 4px; display: flex; justify-content: space-between; color: #fff; font-size: 0.7rem; font-weight: 600; }
+    .sms-header { background: #f2f2f7; padding: 12px 16px; text-align: center; font-weight: 600; font-size: 0.95rem; color: #111; border-bottom: 1px solid #e5e7eb; }
+    .sms-body { background: #fff; padding: 20px 16px; min-height: 200px; }
+    .sms-bubble { background: #e5e5ea; color: #111; padding: 10px 14px; border-radius: 18px; border-bottom-left-radius: 4px; font-size: 0.9rem; line-height: 1.5; max-width: 85%; display: inline-block; }
+    .sms-time { text-align: center; font-size: 0.7rem; color: #8e8e93; margin-top: 8px; }
+    .sms-home { height: 4px; width: 120px; background: #1a1a1a; border-radius: 2px; margin: 8px auto; }
+
+    /* --- Push preview --- */
+    .push-phone { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 32px; box-shadow: 0 4px 24px rgba(0,0,0,0.10); max-width: 340px; margin: 0 auto; overflow: hidden; border: 6px solid #1a1a1a; padding: 40px 12px 20px; min-height: 300px; }
+    .push-status-bar { display: flex; justify-content: space-between; color: rgba(255,255,255,0.9); font-size: 0.7rem; font-weight: 600; margin-bottom: 24px; padding: 0 8px; }
+    .push-card { background: rgba(255,255,255,0.95); backdrop-filter: blur(20px); border-radius: 14px; padding: 12px; display: flex; gap: 10px; align-items: flex-start; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .push-icon { width: 36px; height: 36px; border-radius: 8px; background: #f97316; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; flex-shrink: 0; }
+    .push-content { flex: 1; min-width: 0; }
+    .push-app-name { font-size: 0.7rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.03em; }
+    .push-title { font-size: 0.85rem; font-weight: 600; color: #111827; margin-top: 2px; }
+    .push-body-text { font-size: 0.8rem; color: #4b5563; margin-top: 2px; line-height: 1.4; }
+
+    /* Details card */
+    .details-card { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.05); padding: 20px 24px; margin-top: 24px; }
+    .details-card h3 { font-size: 0.85rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+    .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; font-size: 0.85rem; }
+    .details-grid .detail-label { font-weight: 600; color: #374151; }
+    .details-grid .detail-value { color: #6b7280; }
+    .detail-full { grid-column: span 2; }
+
+    /* Nav buttons */
+    .nav-bar { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+    .nav-btn { padding: 6px 14px; border-radius: 6px; border: 1px solid #d1d5db; background: #fff; color: #374151; font-size: 0.8rem; cursor: pointer; text-decoration: none; }
+    .nav-btn:hover { background: #f9fafb; }
+    .nav-btn.disabled { opacity: 0.4; pointer-events: none; }
+
+    /* Channel label */
+    .channel-label { display: inline-block; padding: 3px 10px; border-radius: 9999px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 16px; }
+    .channel-label.email { background: #dbeafe; color: #1d4ed8; }
+    .channel-label.in-app { background: #ede9fe; color: #6d28d9; }
+    .channel-label.sms { background: #d1fae5; color: #065f46; }
+    .channel-label.push { background: #ffedd5; color: #c2410c; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+
+  <!-- Embedded data -->
+  <script id="msg-data" type="application/json">[{"id":"TX-01","stage":"TX","name":"Verify Your Email","classification":"transactional","trigger":{"event":"user.signed_up","type":"event"},"wait":"P0D","guards":[],"suppressions":[],"channel":"email","cta":{"text":"Verify email","url":"/verify?token={{token}}"},"segment":"All new signups","tags":["type:transactional"],"format":"plain","from":"SignalStack Team","goal":"Email verification","comments":"Instant. Verification link with 24h expiry.","origin":"new"},{"id":"TX-02","stage":"TX","name":"Password Reset","classification":"transactional","trigger":{"event":"user.password_reset_requested","type":"event"},"wait":"P0D","guards":[],"suppressions":[],"channel":"email","cta":{"text":"Reset password","url":"/reset-password?token={{token}}"},"segment":"Users requesting reset","tags":["type:transactional"],"format":"plain","from":"SignalStack Team","goal":"Password reset","comments":"Instant. Reset link with 1h expiry.","origin":"new"},{"id":"TX-03","stage":"TX","name":"Payment Receipt","classification":"transactional","trigger":{"event":"subscription.payment_processed","type":"event"},"wait":"P0D","guards":[],"suppressions":[],"channel":"email","cta":{"text":"View invoice","url":"/settings/billing"},"segment":"Paying users","tags":["type:transactional"],"format":"plain","from":"SignalStack Team","goal":"Payment confirmation","comments":"Include amount, plan name, next billing date.","origin":"new"},{"id":"TX-04","stage":"TX","name":"Plan Change Confirmation","classification":"transactional","trigger":{"event":"subscription.changed","type":"event"},"wait":"P0D","guards":[],"suppressions":[],"channel":"email","cta":{"text":"View your plan","url":"/settings/billing"},"segment":"Users changing plans","tags":["type:transactional"],"format":"plain","from":"SignalStack Team","goal":"Plan change confirmation","comments":"Show old plan → new plan, new credit allocation, effective date.","origin":"new"},{"id":"TX-05","stage":"TX","name":"Account Deletion Confirmation","classification":"transactional","trigger":{"event":"user.deletion_requested","type":"event"},"wait":"P0D","guards":[],"suppressions":[],"channel":"email","cta":{"text":"Cancel deletion","url":"/settings/account?cancel_deletion=true"},"segment":"Users requesting deletion","tags":["type:transactional"],"format":"plain","from":"SignalStack Team","goal":"Confirm deletion, offer reversal window","comments":"30-day grace period. Show what data will be lost.","origin":"new"},{"id":"AQ-01","stage":"AQ","name":"SignalStack is *not* for everyone","classification":"lifecycle","trigger":{"event":"user.email_verified","type":"event"},"wait":"PT5M","guards":[],"suppressions":[],"channel":"email","cta":{"text":"Run your first AI search","url":"/app/search"},"segment":"All verified users","tags":["type:educational"],"format":"plain","from":"Vlad from SignalStack","goal":"Onboarding start — drive first search","comments":"Bold, direct welcome email. Make it clear what SignalStack does (and doesn't do). Set expectations for the onboarding sequence. Single CTA to first search.","origin":"new"},{"id":"AQ-02","stage":"AQ","name":"SignalStack is *not* for everyone","classification":"lifecycle","trigger":{"event":"user.email_verified","type":"event"},"wait":"PT5M","guards":[],"suppressions":[],"channel":"in-app","cta":{"text":"Run your first AI search","url":"/app/search"},"segment":"All verified users","tags":["type:educational"],"format":"plain","from":"Vlad from SignalStack","goal":"Onboarding start — drive first search","comments":"In-app welcome banner. Short, punchy, drive to first search.","origin":"new"},{"id":"AQ-03","stage":"AQ","name":"Your first leads are 3 steps away (1/6)","classification":"lifecycle","trigger":{"event":"user.email_verified","type":"event"},"wait":"P1D","guards":[{"condition":"User has not completed onboarding","expression":"onboarding.completed == false"}],"suppressions":[{"condition":"User already performed a search","expression":"feature.ai_search_used == true"}],"channel":"email","cta":{"text":"Start your first search","url":"/app/search"},"segment":"Verified users who haven't searched yet","tags":["type:educational"],"format":"plain","from":"Vlad from SignalStack","goal":"Drive first meaningful action — AI search","comments":"Getting started guide. Numbered sequence (1/6) sets expectations. Walk through: define ICP → run AI search → see results. Keep it under 150 words.","origin":"new"},{"id":"AC-01","stage":"AC","name":"Find your perfect leads with AI search (2/6)","classification":"lifecycle","trigger":{"event":"user.email_verified","type":"event"},"wait":"P2D","guards":[{"condition":"User has not cancelled","expression":"user.plan != 'cancelled'"}],"suppressions":[{"condition":"User already used AI search","expression":"feature.ai_search_used == true"}],"channel":"email","cta":{"text":"Try AI search","url":"/app/search"},"segment":"Active users","tags":["type:educational","feature:ai-search"],"format":"plain","from":"Vlad from SignalStack","goal":"Drive first use of AI ICP targeting & search","comments":"Show how AI search finds leads matching their ICP. One specific use case. Suppress if already used.","origin":"new"},{"id":"AC-02","stage":"AC","name":"Find your perfect leads with AI search (2/6)","classification":"lifecycle","trigger":{"event":"user.email_verified","type":"event"},"wait":"P2D","guards":[{"condition":"User has not cancelled","expression":"user.plan != 'cancelled'"}],"suppressions":[{"condition":"User already used AI search","expression":"feature.ai_search_used == true"}],"channel":"in-app","cta":{"text":"Try AI search","url":"/app/search"},"segment":"Active users","tags":["type:educational","feature:ai-search"],"format":"plain","from":"Vlad from SignalStack","goal":"Drive first use of AI ICP targeting & search","comments":"In-app nudge to try AI search. Contextual, short.","origin":"new"},{"id":"AC-03","stage":"AC","name":"See the emails behind the companies (3/6)","classification":"lifecycle","trigger":{"event":"user.email_verified","type":"event"},"wait":"P3D","guards":[{"condition":"User has not cancelled","expression":"user.plan != 'cancelled'"}],"suppressions":[{"condition":"User already exported a contact","expression":"feature.contact_exported == true"}],"channel":"email","cta":{"text":"Reveal your first contacts","url":"/app/search"},"segment":"Active users","tags":["type:educational","feature:contact-export"],"format":"plain","from":"Vlad from SignalStack","goal":"Drive first contact reveal & export — THIS IS THE AHA MOMENT","comments":"This is the money email. Seeing verified emails for target companies is the aha moment. Make it tangible.","origin":"new"},{"id":"AC-04","stage":"AC","name":"See the emails behind the companies (3/6)","classification":"lifecycle","trigger":{"event":"user.email_verified","type":"event"},"wait":"P3D","guards":[{"condition":"User has not cancelled","expression":"user.plan != 'cancelled'"}],"suppressions":[{"condition":"User already exported a contact","expression":"feature.contact_exported == true"}],"channel":"in-app","cta":{"text":"Reveal your first contacts","url":"/app/search"},"segment":"Active users","tags":["type:educational","feature:contact-export"],"format":"plain","from":"Vlad from SignalStack","goal":"Drive first contact reveal & export — AHA MOMENT","comments":"In-app nudge to reveal contacts. Contextual prompt when viewing company results.","origin":"new"},{"id":"AC-05","stage":"AC","name":"Know who's ready to buy right now (4/6)","classification":"lifecycle","trigger":{"event":"user.email_verified","type":"event"},"wait":"P5D","guards":[{"condition":"User has not cancelled","expression":"user.plan != 'cancelled'"}],"suppressions":[{"condition":"User already used buyer intent","expression":"feature.buyer_intent_used == true"}],"channel":"email","cta":{"text":"See who's searching for you","url":"/app/buyer-intent"},"segment":"Active users","tags":["type:educational","feature:buyer-intent"],"format":"plain","from":"Vlad from SignalStack","goal":"Drive first use of buyer intent signals","comments":"Buyer intent across 7,500 topics. Frame it as: stop cold outreach, start warm outreach.","origin":"new"},{"id":"AC-06","stage":"AC","name":"Spy on their tech stack (5/6)","classification":"lifecycle","trigger":{"event":"user.email_verified","type":"event"},"wait":"P7D","guards":[{"condition":"User has not cancelled","expression":"user.plan != 'cancelled'"}],"suppressions":[{"condition":"User already used technographics","expression":"feature.technographics_used == true"}],"channel":"email","cta":{"text":"Filter by tech stack","url":"/app/search?filter=technographics"},"segment":"Active users","tags":["type:educational","feature:technographics"],"format":"plain","from":"Vlad from SignalStack","goal":"Drive first use of technographic profiling","comments":"Show how to find companies using specific technologies. Great for competitive displacement plays.","origin":"new"},{"id":"AC-07","stage":"AC","name":"Spy on their tech stack (5/6)","classification":"lifecycle","trigger":{"event":"user.email_verified","type":"event"},"wait":"P7D","guards":[{"condition":"User has not cancelled","expression":"user.plan != 'cancelled'"}],"suppressions":[{"condition":"User already used technographics","expression":"feature.technographics_used == true"}],"channel":"in-app","cta":{"text":"Filter by tech stack","url":"/app/search?filter=technographics"},"segment":"Active users","tags":["type:educational","feature:technographics"],"format":"plain","from":"Vlad from SignalStack","goal":"Drive first use of technographic profiling","comments":"In-app nudge to try tech stack filter. Show when user is in search view.","origin":"new"},{"id":"AC-08","stage":"AC","name":"Find companies with fresh funding (5.5/6)","classification":"lifecycle","trigger":{"event":"user.email_verified","type":"event"},"wait":"P10D","guards":[{"condition":"User has not cancelled","expression":"user.plan != 'cancelled'"}],"suppressions":[{"condition":"User already used funding insights","expression":"feature.funding_insights_used == true"}],"channel":"email","cta":{"text":"Find funded companies","url":"/app/search?filter=funding"},"segment":"Active users","tags":["type:educational","feature:funding-insights"],"format":"plain","from":"Vlad from SignalStack","goal":"Drive first use of funding insights","comments":"Companies that just raised money are actively hiring, buying tools, and expanding. Frame funding data as a timing signal.","origin":"new"},{"id":"AC-09","stage":"AC","name":"Push leads straight to your CRM (6/6)","classification":"lifecycle","trigger":{"event":"user.email_verified","type":"event"},"wait":"P14D","guards":[{"condition":"User has not cancelled","expression":"user.plan != 'cancelled'"}],"suppressions":[{"condition":"User already connected a CRM","expression":"feature.crm_integration_connected == true"}],"channel":"email","cta":{"text":"Connect your CRM","url":"/app/integrations"},"segment":"Active users","tags":["type:educational","feature:crm-integration"],"format":"plain","from":"Vlad from SignalStack","goal":"Drive CRM integration (Pipedrive, HubSpot, Lemlist)","comments":"Final onboarding step. Complete the workflow: find leads → reveal contacts → push to CRM → start outreach.","origin":"new"},{"id":"AC-10","stage":"AC","name":"Push leads straight to your CRM (6/6)","classification":"lifecycle","trigger":{"event":"user.email_verified","type":"event"},"wait":"P14D","guards":[{"condition":"User has not cancelled","expression":"user.plan != 'cancelled'"}],"suppressions":[{"condition":"User already connected a CRM","expression":"feature.crm_integration_connected == true"}],"channel":"in-app","cta":{"text":"Connect your CRM","url":"/app/integrations"},"segment":"Active users","tags":["type:educational","feature:crm-integration"],"format":"plain","from":"Vlad from SignalStack","goal":"Drive CRM integration (Pipedrive, HubSpot, Lemlist)","comments":"In-app prompt to connect CRM. Show in integrations area or after an export.","origin":"new"},{"id":"RV-01","stage":"RV","name":"Your credits are running low","classification":"lifecycle","trigger":{"event":"credits.running_low","type":"event"},"wait":"P0D","guards":[{"condition":"User is on free or basic plan","expression":"user.plan in ['free', 'basic']"}],"suppressions":[],"channel":"email","cta":{"text":"Upgrade for more credits","url":"/pricing"},"segment":"Free and Basic users approaching credit limit","tags":["type:promotional","segment:active"],"format":"plain","from":"Vlad from SignalStack","goal":"Drive upgrade via natural usage growth","comments":"Strongest upgrade signal. Show credits used vs remaining. Frame upgrade as unlocking momentum.","origin":"new"},{"id":"RV-02","stage":"RV","name":"Your credits are running low","classification":"lifecycle","trigger":{"event":"credits.running_low","type":"event"},"wait":"P0D","guards":[{"condition":"User is on free or basic plan","expression":"user.plan in ['free', 'basic']"}],"suppressions":[],"channel":"in-app","cta":{"text":"Upgrade for more credits","url":"/pricing"},"segment":"Free and Basic users approaching credit limit","tags":["type:promotional","segment:active"],"format":"plain","from":"Vlad from SignalStack","goal":"Drive upgrade via natural usage growth","comments":"In-app banner when credits are low. Show remaining count and upgrade CTA.","origin":"new"},{"id":"RV-03","stage":"RV","name":"You've used all your credits","classification":"lifecycle","trigger":{"event":"credits.exhausted","type":"event"},"wait":"P0D","guards":[{"condition":"User has not upgraded","expression":"user.plan != 'business'"}],"suppressions":[],"channel":"email","cta":{"text":"Upgrade now","url":"/pricing"},"segment":"Users who exhausted credits","tags":["type:promotional","priority:high"],"format":"plain","from":"Vlad from SignalStack","goal":"Convert credit-exhausted users to paid","comments":"Be direct: momentum shouldn't stop because of a credit limit. Show what the next tier unlocks.","origin":"new"},{"id":"RV-04","stage":"RV","name":"You've used all your credits","classification":"lifecycle","trigger":{"event":"credits.exhausted","type":"event"},"wait":"P0D","guards":[{"condition":"User has not upgraded","expression":"user.plan != 'business'"}],"suppressions":[],"channel":"in-app","cta":{"text":"Upgrade now","url":"/pricing"},"segment":"Users who exhausted credits","tags":["type:promotional","priority:high"],"format":"plain","from":"Vlad from SignalStack","goal":"Convert credit-exhausted users to paid","comments":"In-app blocker when credits hit zero. Show usage stats and upgrade options.","origin":"new"},{"id":"RV-05","stage":"RV","name":"Your trial ends in {{days_left}} days","classification":"lifecycle","trigger":{"event":"trial.ending_soon","type":"event"},"wait":"P0D","guards":[{"condition":"User is on trial","expression":"user.plan == 'trial'"}],"suppressions":[],"channel":"email","cta":{"text":"Choose a plan","url":"/pricing"},"segment":"Trial users, 3 days before expiry","tags":["type:promotional","segment:trial"],"format":"plain","from":"Vlad from SignalStack","goal":"Convert trial to paid","comments":"Show usage stats. Make them feel the loss of stopping. Reassure data is safe.","origin":"new"},{"id":"RV-06","stage":"RV","name":"Your trial ends in {{days_left}} days","classification":"lifecycle","trigger":{"event":"trial.ending_soon","type":"event"},"wait":"P0D","guards":[{"condition":"User is on trial","expression":"user.plan == 'trial'"}],"suppressions":[],"channel":"in-app","cta":{"text":"Choose a plan","url":"/pricing"},"segment":"Trial users, 3 days before expiry","tags":["type:promotional","segment:trial"],"format":"plain","from":"Vlad from SignalStack","goal":"Convert trial to paid","comments":"In-app banner showing trial countdown and usage stats.","origin":"new"},{"id":"RV-07","stage":"RV","name":"Your trial expired — here's what you keep","classification":"lifecycle","trigger":{"event":"trial.expired","type":"event"},"wait":"P0D","guards":[{"condition":"User has not upgraded","expression":"user.plan != 'basic' && user.plan != 'business'"}],"suppressions":[],"channel":"email","cta":{"text":"Choose a plan","url":"/pricing"},"segment":"Expired trial users","tags":["type:promotional","segment:trial"],"format":"plain","from":"Vlad from SignalStack","goal":"Win back expired trial user","comments":"Reassure data is safe. Remind what they accomplished. Offer Basic at $19/mo as low-friction entry.","origin":"new"},{"id":"RT-01","stage":"RT","name":"Your week in SignalStack","classification":"lifecycle","trigger":{"event":"scheduled","type":"scheduled","schedule":"every friday 9am"},"wait":"P0D","guards":[{"condition":"User was active this week","expression":"user.sessions_this_week >= 1"}],"suppressions":[],"channel":"email","cta":{"text":"Find more leads","url":"/app/search"},"segment":"Active users","tags":["type:behavioral"],"format":"plain","from":"Vlad from SignalStack","goal":"Reinforce value, drive continued usage","comments":"Weekly recap: searches run, contacts revealed, emails found, credits used/remaining.","origin":"new"},{"id":"RT-02","stage":"RT","name":"Your leads are waiting","classification":"lifecycle","trigger":{"event":"user.inactive_3_days","type":"behavioral"},"wait":"P0D","guards":[],"suppressions":[],"channel":"email","cta":{"text":"Jump back in","url":"/app/search"},"segment":"Users inactive 3 days","tags":["type:behavioral","segment:dormant"],"format":"plain","from":"Vlad from SignalStack","goal":"Re-engage before habit breaks","comments":"Soft nudge. Mention new buyer intent data available. Low pressure.","origin":"new"},{"id":"RT-03","stage":"RT","name":"Your leads are waiting","classification":"lifecycle","trigger":{"event":"user.inactive_3_days","type":"behavioral"},"wait":"P0D","guards":[],"suppressions":[],"channel":"in-app","cta":{"text":"Jump back in","url":"/app/search"},"segment":"Users inactive 3 days","tags":["type:behavioral","segment:dormant"],"format":"plain","from":"Vlad from SignalStack","goal":"Re-engage before habit breaks","comments":"In-app notification when user returns after 3 days. Show new matches since last visit.","origin":"new"},{"id":"RT-04","stage":"RT","name":"While you were away, {{prospect_count}} new companies matched your ICP","classification":"lifecycle","trigger":{"event":"user.inactive_7_days","type":"behavioral"},"wait":"P0D","guards":[],"suppressions":[],"channel":"email","cta":{"text":"See new matches","url":"/app/search"},"segment":"Users inactive 7 days","tags":["type:behavioral","segment:dormant"],"format":"plain","from":"Vlad from SignalStack","goal":"Show value they're missing","comments":"Make inactivity feel like missed opportunity. Show what's new in their ICP matches.","origin":"new"},{"id":"RT-05","stage":"RT","name":"Should I close your account?","classification":"lifecycle","trigger":{"event":"user.inactive_14_days","type":"behavioral"},"wait":"P0D","guards":[],"suppressions":[],"channel":"email","cta":{"text":"No, I'm coming back","url":"/app/search"},"segment":"Users inactive 14 days","tags":["type:behavioral","segment:churning","priority:high"],"format":"plain","from":"Vlad from SignalStack","goal":"Last attempt before marking churned","comments":"Breakup email. Bold subject line. Ask what went wrong if they're not coming back.","origin":"new"},{"id":"RF-01","stage":"RF","name":"Your team is missing out","classification":"lifecycle","trigger":{"event":"milestone.first_success","type":"event"},"wait":"P1D","guards":[],"suppressions":[{"condition":"User already invited a teammate","expression":"user.teammates_invited >= 1"}],"channel":"email","cta":{"text":"Invite your team","url":"/app/settings/team"},"segment":"Users who hit first milestone (e.g., 50+ contacts exported)","tags":["type:promotional"],"format":"plain","from":"Vlad from SignalStack","goal":"Organic growth via team invites","comments":"Trigger after first export milestone. Frame as: imagine what your whole team could find.","origin":"new"},{"id":"RF-02","stage":"RF","name":"Your team is missing out","classification":"lifecycle","trigger":{"event":"milestone.first_success","type":"event"},"wait":"P1D","guards":[],"suppressions":[{"condition":"User already invited a teammate","expression":"user.teammates_invited >= 1"}],"channel":"in-app","cta":{"text":"Invite your team","url":"/app/settings/team"},"segment":"Users who hit first milestone (e.g., 50+ contacts exported)","tags":["type:promotional"],"format":"plain","from":"Vlad from SignalStack","goal":"Organic growth via team invites","comments":"In-app prompt after milestone. Show team collaboration benefits.","origin":"new"},{"id":"RF-03","stage":"RF","name":"Know someone who'd love SignalStack?","classification":"lifecycle","trigger":{"event":"user.active_30_days","type":"behavioral"},"wait":"P0D","guards":[],"suppressions":[],"channel":"email","cta":{"text":"Share SignalStack","url":"/app/referral"},"segment":"Power users (30+ days active)","tags":["type:promotional"],"format":"plain","from":"Vlad from SignalStack","goal":"Turn power users into advocates","comments":"Reference the affiliate program. Frame as: help a friend ditch the expensive stuff.","origin":"new"}]</script>
+  <script id="content-data" type="application/json">{"TX-01":"## Email\n\n**Subject:** Verify your SignalStack account\n**Preheader:** One click and you're in\n\nVerify your email to get started with SignalStack.\n\n**[Verify email]**\n\nThis link expires in 24 hours. If you didn't create a SignalStack account, you can safely ignore this email.\n\n-- The SignalStack Team","TX-02":"## Email\n\n**Subject:** Reset your password\n**Preheader:** Here's your password reset link\n\nWe received a request to reset your SignalStack password.\n\n**[Reset password]**\n\nThis link expires in 1 hour. If you didn't request this, no action is needed -- your password hasn't been changed.\n\n-- The SignalStack Team","TX-03":"## Email\n\n**Subject:** Your SignalStack receipt -- {{plan_name}} plan\n**Preheader:** Payment confirmed for {{billing_period}}\n\nHere's your payment confirmation:\n\n- **Plan:** {{plan_name}}\n- **Amount:** {{amount}}\n- **Date:** {{payment_date}}\n- **Next billing date:** {{next_billing_date}}\n\n**[View invoice]**\n\n-- The SignalStack Team","TX-04":"## Email\n\n**Subject:** Your plan has been updated\n**Preheader:** {{old_plan}} to {{new_plan}} -- here's what changed\n\nYour SignalStack plan has been updated:\n\n- **Previous plan:** {{old_plan}}\n- **New plan:** {{new_plan}}\n- **Monthly credits:** {{new_credits}}\n- **Effective:** {{effective_date}}\n\nYour new credit allocation is available immediately.\n\n**[View your plan]**\n\n-- The SignalStack Team","TX-05":"## Email\n\n**Subject:** Your account is scheduled for deletion\n**Preheader:** You have 30 days to change your mind\n\nYour SignalStack account is scheduled for permanent deletion on {{deletion_date}}.\n\nAfter that date, the following will be permanently removed:\n- All saved searches and lead lists\n- Exported contacts and history\n- CRM integration settings\n- Team members and permissions\n\nIf you change your mind, you can cancel the deletion anytime in the next 30 days.\n\n**[Cancel deletion]**\n\n-- The SignalStack Team","AQ-01":"## Email\n\n**Subject:** SignalStack is not for everyone\n**Preheader:** If you're serious about outbound, keep reading\n\nHey {{first_name}},\n\nI'll be straight with you -- SignalStack isn't for people who want to blast 10,000 generic emails and hope something sticks.\n\nIt's for people who actually care about finding the *right* leads. SDRs and founders who'd rather talk to 50 perfect-fit prospects than spam 5,000 random ones.\n\nIf that's you, here's how this works:\n\n1. Tell our AI who your ideal customer is\n2. We search 180M+ verified contacts to find matches\n3. You get real emails, buyer intent signals, and company intel\n\nThe whole thing takes about 2 minutes. Seriously.\n\n**[Run your first AI search]**\n\nI'll send you a few tips over the next couple of weeks to help you get the most out of SignalStack. No fluff, just the stuff that actually moves the needle.\n\nVlad","AQ-02":"## In-App\n\n**Title:** Welcome to SignalStack -- let's find your first leads\n**Body:** Tell our AI who your ideal customer is, and we'll search 180M+ contacts to find matches with verified emails. Takes about 2 minutes.\n**CTA:** Run your first AI search","AQ-03":"## Email\n\n**Subject:** Your first leads are 3 steps away (1/6)\n**Preheader:** Define your ICP, search, done\n\nHey {{first_name}},\n\nMost people overthink their first search. Don't.\n\nHere's all you need to do:\n\n1. **Describe your ideal customer.** Industry, company size, role -- whatever matters to you. Plain English works, the AI figures out the rest.\n2. **Hit search.** SignalStack scans 180M+ contacts and pulls back the ones that match.\n3. **Browse your results.** Real companies, real people, verified emails.\n\nThat's it. Three steps, about 2 minutes.\n\n**[Start your first search]**\n\nThis is email 1 of 6. I'll walk you through the features that'll make the biggest difference for your outreach -- one at a time, no overwhelm.\n\nVlad","AC-01":"## Email\n\n**Subject:** Find your perfect leads with AI search (2/6)\n**Preheader:** Tell the AI who you sell to -- it does the rest\n\nHey {{first_name}},\n\nHere's what makes SignalStack different from scrolling through LinkedIn for hours: you describe your ideal buyer in plain English, and the AI does the digging.\n\nTry something like this:\n\n*\"SaaS companies, 50-200 employees, using HubSpot, based in the US, that recently raised Series A\"*\n\nSignalStack will pull back a list of companies and contacts that match -- with verified emails, not guesses.\n\nThe more specific you are, the better the results. But even a simple search like \"fintech startups in Europe\" works great to get started.\n\n**[Try AI search]**\n\nVlad","AC-02":"## In-App\n\n**Title:** Let AI find your perfect leads\n**Body:** Describe your ideal customer in plain English -- industry, size, tech stack, location. SignalStack scans 180M+ contacts and returns verified matches.\n**CTA:** Try AI search","AC-03":"## Email\n\n**Subject:** See the emails behind the companies (3/6)\n**Preheader:** Pick a company you want to sell to. I bet we have their emails.\n\nHey {{first_name}},\n\nHere's a challenge: think of a company you'd love to sell to. Got one?\n\nNow search for them in SignalStack. Click on the company and hit \"Reveal contacts.\"\n\nYou'll see decision-makers with their verified work emails -- not generic info@ addresses, actual people you can reach out to.\n\nThat's the whole point of SignalStack. No more guessing email formats. No more bounced messages. No more \"I think this might be their address.\"\n\nJust verified emails for the people you actually want to talk to.\n\n**[Reveal your first contacts]**\n\nOnce you've got contacts, you can export them to CSV or push them straight to your CRM. But first -- just try revealing one company. See how it feels.\n\nVlad","AC-04":"## In-App\n\n**Title:** See the real emails behind any company\n**Body:** Click on any company in your search results and hit \"Reveal contacts\" to see verified decision-maker emails. No more guessing formats.\n**CTA:** Reveal your first contacts","AC-05":"## Email\n\n**Subject:** Know who's ready to buy right now (4/6)\n**Preheader:** Stop cold outreach. Start warm outreach.\n\nHey {{first_name}},\n\nWhat if you knew which companies were actively researching what you sell -- before you ever reached out?\n\nThat's buyer intent data, and SignalStack tracks it across 7,500+ topics.\n\nHere's how it changes your outreach:\n\n- **Without intent:** \"Hey, thought you might be interested in...\" (cold, ignored)\n- **With intent:** \"I noticed your team's been looking into [topic]. Here's how we help...\" (warm, relevant)\n\nSame product. Same pitch. Completely different response rate.\n\nGo to Buyer Intent, pick a topic related to what you sell, and see which companies are actively searching for it right now.\n\n**[See who's searching for you]**\n\nTough, right!? Having this data and NOT reaching out feels like leaving money on the table.\n\nVlad","AC-06":"## Email\n\n**Subject:** Spy on their tech stack (5/6)\n**Preheader:** Find every company using your competitor's product\n\nHey {{first_name}},\n\nHere's a play that works ridiculously well for outbound:\n\nFind every company using your competitor's product -- then pitch them yours.\n\nSignalStack tracks the tech stack of millions of companies. You can filter by any technology: CRMs, marketing tools, dev frameworks, analytics platforms, you name it.\n\nSome ideas to try:\n\n- Selling a Salesforce alternative? Filter for companies using Salesforce.\n- Have a Slack integration? Find teams already on Slack.\n- Competing with HubSpot? See who's running HubSpot right now.\n\nCombine this with AI search and you've got a hyper-targeted list in under a minute.\n\n**[Filter by tech stack]**\n\nVlad","AC-07":"## In-App\n\n**Title:** Find companies by their tech stack\n**Body:** Filter your search by any technology -- CRMs, dev tools, analytics platforms. Great for competitive displacement: find everyone using your competitor's product.\n**CTA:** Filter by tech stack","AC-08":"## Email\n\n**Subject:** Find companies with fresh funding (5.5/6)\n**Preheader:** They just raised money. They're buying.\n\nHey {{first_name}},\n\nQuick tip that a lot of our best users swear by:\n\nCompanies that just raised a round are the easiest to sell to. Why?\n\n- They have budget (literally just got a check)\n- They're hiring fast (need tools to scale)\n- They're making buying decisions right now\n\nSignalStack lets you filter by funding stage and recency. Search for companies that raised a Series A in the last 90 days, and you've got a list of prospects with money to spend and urgency to spend it.\n\n**[Find funded companies]**\n\nThis is one of those features people don't think to use until they try it. Then they wonder how they ever did outbound without it.\n\nVlad","AC-09":"## Email\n\n**Subject:** Push leads straight to your CRM (6/6)\n**Preheader:** Find, reveal, export -- all without leaving SignalStack\n\nHey {{first_name}},\n\nLast email in the series -- and this one ties everything together.\n\nYou've been finding leads, revealing contacts, maybe using intent signals or tech stack filters. But if you're still copy-pasting emails into your CRM, you're doing extra work for no reason.\n\nConnect your CRM and the whole workflow becomes:\n\n1. Find leads with AI search\n2. Reveal verified contacts\n3. Push them to your CRM in one click\n4. Start outreach\n\nWe integrate with Pipedrive, HubSpot, and Lemlist. Setup takes about 60 seconds.\n\n**[Connect your CRM]**\n\nThat's the full SignalStack workflow. Find the right leads, get their real emails, send them where they need to go. Way to go for making it through the whole series -- now go close some deals.\n\nVlad","AC-10":"## In-App\n\n**Title:** Connect your CRM for one-click export\n**Body:** Push leads directly to Pipedrive, HubSpot, or Lemlist. No more copy-pasting -- contacts go straight into your outreach pipeline.\n**CTA:** Connect your CRM","RV-01":"## Email\n\n**Subject:** You're almost out of credits\n**Preheader:** You've been busy -- that's a good sign\n\nHey {{first_name}},\n\nYou've used {{credits_used}} of your {{credits_total}} credits this month. That means you're actually using SignalStack the way it's meant to be used -- and you're running out of runway.\n\nHere's what you've done so far:\n- {{searches_count}} searches\n- {{contacts_revealed}} contacts revealed\n- {{exports_count}} exports\n\nThat momentum shouldn't stop because of a credit limit.\n\nThe Business plan gives you 10,000 credits/month -- way, way above what most users need. And at $89/month, each credit costs less than a penny.\n\n**[Upgrade for more credits]**\n\nVlad","RV-02":"## In-App\n\n**Title:** Running low on credits\n**Body:** You've used {{credits_used}} of {{credits_total}} credits. Upgrade to keep your prospecting momentum going -- Business gives you 10,000 credits/month.\n**CTA:** Upgrade for more credits","RV-03":"## Email\n\n**Subject:** You've hit your credit limit\n**Preheader:** You found {{contacts_revealed}} leads this month. Don't stop now.\n\nHey {{first_name}},\n\nYou've used all {{credits_total}} credits for this month.\n\nLet me put that in perspective -- you found {{contacts_revealed}} verified contacts this month. That's a real pipeline you've built. The worst thing that could happen now is losing that momentum because of a limit.\n\nYour options:\n\n- **Wait** until your credits reset on {{reset_date}}\n- **Upgrade to Basic** ($19/mo) for 1,000 credits\n- **Upgrade to Business** ($89/mo) for 10,000 credits\n\nI value time and wish neither of us waste it, so I'll be direct: if SignalStack is working for you, the upgrade pays for itself with one closed deal.\n\n**[Upgrade now]**\n\nVlad","RV-04":"## In-App\n\n**Title:** You've used all your credits\n**Body:** You found {{contacts_revealed}} contacts this month -- that's real momentum. Upgrade to keep going, or wait until credits reset on {{reset_date}}.\n**CTA:** Upgrade now","RV-05":"## Email\n\n**Subject:** Your trial ends in {{days_left}} days\n**Preheader:** Here's what you've built so far\n\nHey {{first_name}},\n\nYour SignalStack trial wraps up in {{days_left}} days. Before you decide, look at what you've done:\n\n- **{{searches_count}}** AI searches run\n- **{{contacts_revealed}}** contacts revealed\n- **{{exports_count}}** leads exported\n\nThat's real pipeline. Your saved searches, lead lists, and CRM connections aren't going anywhere -- they'll be here when you pick a plan.\n\nTwo options:\n\n- **Basic** at $19/mo (1,000 credits) -- great if you're just getting started with outbound\n- **Business** at $89/mo (10,000 credits) -- for teams that are serious about scaling pipeline\n\nNo credit card was needed to start, and you can cancel anytime.\n\n**[Choose a plan]**\n\nVlad","RV-06":"## In-App\n\n**Title:** Your trial ends in {{days_left}} days\n**Body:** You've revealed {{contacts_revealed}} contacts and run {{searches_count}} searches. Choose a plan to keep your momentum going -- your data stays safe either way.\n**CTA:** Choose a plan","RV-07":"## Email\n\n**Subject:** Your trial expired -- here's what you keep\n**Preheader:** Your leads aren't going anywhere\n\nHey {{first_name}},\n\nYour trial's over, but nothing's been deleted. Your saved searches, lead lists, revealed contacts, and CRM connections are all still there.\n\nYou just can't reveal new contacts or run new searches until you pick a plan.\n\nIf SignalStack worked for you, the Basic plan starts at $19/mo -- that's 1,000 credits to keep the pipeline moving. If you need more horsepower, Business gives you 10,000 credits for $89/mo.\n\n**[Choose a plan]**\n\nAnd if SignalStack wasn't the right fit, no hard feelings. Just in case you need some help deciding, reply to this email -- I read every one.\n\nVlad","RT-01":"## Email\n\n**Subject:** Your week in SignalStack\n**Preheader:** {{contacts_revealed}} contacts revealed this week\n\nHey {{first_name}},\n\nHere's your weekly recap:\n\n- **Searches:** {{searches_this_week}}\n- **Contacts revealed:** {{contacts_revealed_this_week}}\n- **Exports:** {{exports_this_week}}\n- **Credits remaining:** {{credits_remaining}} / {{credits_total}}\n\nKeep it going.\n\n**[Find more leads]**\n\nVlad","RT-02":"## Email\n\n**Subject:** Your leads are waiting\n**Preheader:** New buyer intent data is available for your ICP\n\nHey {{first_name}},\n\nHaven't seen you in a few days -- just a heads up that there's new buyer intent data available for your saved searches.\n\nCompanies are actively researching topics relevant to what you sell. The longer you wait, the more likely a competitor reaches them first.\n\n**[Jump back in]**\n\nNo pressure. Just didn't want you to miss anything.\n\nVlad","RT-03":"## In-App\n\n**Title:** New matches since your last visit\n**Body:** There's fresh buyer intent data for your saved searches. Companies are actively looking for what you sell -- check the latest matches.\n**CTA:** Jump back in","RT-04":"## Email\n\n**Subject:** {{prospect_count}} new companies match your ICP\n**Preheader:** Your competitors are still prospecting\n\nHey {{first_name}},\n\nIt's been a week since your last search. While you were away, {{prospect_count}} new companies showed up that match your ideal customer profile.\n\nSome of them are showing active buyer intent right now.\n\nHere's the thing -- your competitors are still prospecting. Every day you're not reaching out to these leads, someone else might be.\n\nI'm not trying to guilt you into logging in. But if outbound is still part of your plan, these leads aren't going to wait around.\n\n**[See new matches]**\n\nVlad","RT-05":"## Email\n\n**Subject:** Should I close your account?\n**Preheader:** Honest question. No hard feelings either way.\n\nHey {{first_name}},\n\nIt's been two weeks since you logged into SignalStack. I value time and wish neither of us waste it, so let me ask directly:\n\nAre you coming back?\n\nIf something's off -- wrong features, confusing UX, not enough value -- I genuinely want to know. Reply to this email and tell me what happened. I read every response.\n\nIf you're just busy, no worries. Your account, saved searches, and lead lists are all still here.\n\n**[No, I'm coming back]**\n\nAnd if SignalStack isn't the right tool for you, that's OK too. No guilt trip. I'd rather you tell me so I can make it better for the next person.\n\nVlad","RF-01":"## Email\n\n**Subject:** Your team is missing out\n**Preheader:** You found {{contacts_revealed}} leads. Imagine what your whole team could find.\n\nHey {{first_name}},\n\nYou've exported {{contacts_revealed}} contacts so far. That's solid work.\n\nNow imagine if your whole sales team had access to the same tool. While you're targeting one set of accounts, your teammates could be working different segments, different industries, different ICPs -- all feeding the same pipeline.\n\nEach person gets their own credits, their own saved searches, and their own workflow. But everything syncs to the same CRM.\n\n**[Invite your team]**\n\nIt's $19/mo per user on Basic or $89/mo on Business. Every seat comes with its own credit allocation -- way, way above what our usual customers get on free.\n\nVlad","RF-02":"## In-App\n\n**Title:** Invite your team to SignalStack\n**Body:** You've found {{contacts_revealed}} leads on your own. Your teammates could be working different segments and feeding the same pipeline. Each seat gets its own credits.\n**CTA:** Invite your team","RF-03":"## Email\n\n**Subject:** Know someone who'd love SignalStack?\n**Preheader:** Help a friend ditch the expensive stuff\n\nHey {{first_name}},\n\nYou've been using SignalStack for a month now. If it's been working for you, chances are you know someone else who'd get value from it too.\n\nMaybe a founder friend who's still manually hunting for leads on LinkedIn. Or an SDR at another company who's overpaying for ZoomInfo or Apollo.\n\nIf you send them our way, they get started with 50 free credits -- no strings. And you get to be the person who showed them a better way to do outbound.\n\n**[Share SignalStack]**\n\nThanks for being a SignalStack user. Seriously.\n\nVlad"}</script>
+
+  <!-- Header -->
+  <div class="viewer-header">
+    <div style="display:flex;align-items:center;gap:16px">
+      <a href="dashboard.html">&larr; Dashboard</a>
+      <h1 style="font-size:1rem;font-weight:700;margin:0">SignalStack &mdash; Message Previews</h1>
+    </div>
+    <span style="font-size:0.8rem;color:#9ca3af">33 messages</span>
+  </div>
+
+  <div class="viewer-layout">
+    <!-- Sidebar -->
+    <div class="viewer-sidebar">
+          <div class="stage-group">
+            <div class="stage-group-header">
+              <span class="stage-badge" style="background:#f0f0f0;color:#666">Transactional</span>
+              <span class="text-xs text-gray-400">5</span>
+            </div>
+            <a href="#TX-01" class="msg-link" id="sb-TX-01" data-id="TX-01">
+              <span class="msg-link-id">TX-01</span>
+              <span class="msg-link-name">Verify Your Email</span>
+              <span class="msg-link-ch">email</span>
+            </a>
+            <a href="#TX-02" class="msg-link" id="sb-TX-02" data-id="TX-02">
+              <span class="msg-link-id">TX-02</span>
+              <span class="msg-link-name">Password Reset</span>
+              <span class="msg-link-ch">email</span>
+            </a>
+            <a href="#TX-03" class="msg-link" id="sb-TX-03" data-id="TX-03">
+              <span class="msg-link-id">TX-03</span>
+              <span class="msg-link-name">Payment Receipt</span>
+              <span class="msg-link-ch">email</span>
+            </a>
+            <a href="#TX-04" class="msg-link" id="sb-TX-04" data-id="TX-04">
+              <span class="msg-link-id">TX-04</span>
+              <span class="msg-link-name">Plan Change Confirmation</span>
+              <span class="msg-link-ch">email</span>
+            </a>
+            <a href="#TX-05" class="msg-link" id="sb-TX-05" data-id="TX-05">
+              <span class="msg-link-id">TX-05</span>
+              <span class="msg-link-name">Account Deletion Confirmation</span>
+              <span class="msg-link-ch">email</span>
+            </a>
+          </div>
+          <div class="stage-group">
+            <div class="stage-group-header">
+              <span class="stage-badge" style="background:#d4edda;color:#28a745">Acquisition</span>
+              <span class="text-xs text-gray-400">3</span>
+            </div>
+            <a href="#AQ-01" class="msg-link" id="sb-AQ-01" data-id="AQ-01">
+              <span class="msg-link-id">AQ-01</span>
+              <span class="msg-link-name">SignalStack is *not* for everyone</span>
+              <span class="msg-link-ch">email</span>
+            </a>
+            <a href="#AQ-02" class="msg-link" id="sb-AQ-02" data-id="AQ-02">
+              <span class="msg-link-id">AQ-02</span>
+              <span class="msg-link-name">SignalStack is *not* for everyone</span>
+              <span class="msg-link-ch">in-app</span>
+            </a>
+            <a href="#AQ-03" class="msg-link" id="sb-AQ-03" data-id="AQ-03">
+              <span class="msg-link-id">AQ-03</span>
+              <span class="msg-link-name">Your first leads are 3 steps away (1/6)</span>
+              <span class="msg-link-ch">email</span>
+            </a>
+          </div>
+          <div class="stage-group">
+            <div class="stage-group-header">
+              <span class="stage-badge" style="background:#cce5ff;color:#007bff">Activation</span>
+              <span class="text-xs text-gray-400">10</span>
+            </div>
+            <a href="#AC-01" class="msg-link" id="sb-AC-01" data-id="AC-01">
+              <span class="msg-link-id">AC-01</span>
+              <span class="msg-link-name">Find your perfect leads with AI search (2/6)</span>
+              <span class="msg-link-ch">email</span>
+            </a>
+            <a href="#AC-02" class="msg-link" id="sb-AC-02" data-id="AC-02">
+              <span class="msg-link-id">AC-02</span>
+              <span class="msg-link-name">Find your perfect leads with AI search (2/6)</span>
+              <span class="msg-link-ch">in-app</span>
+            </a>
+            <a href="#AC-03" class="msg-link" id="sb-AC-03" data-id="AC-03">
+              <span class="msg-link-id">AC-03</span>
+              <span class="msg-link-name">See the emails behind the companies (3/6)</span>
+              <span class="msg-link-ch">email</span>
+            </a>
+            <a href="#AC-04" class="msg-link" id="sb-AC-04" data-id="AC-04">
+              <span class="msg-link-id">AC-04</span>
+              <span class="msg-link-name">See the emails behind the companies (3/6)</span>
+              <span class="msg-link-ch">in-app</span>
+            </a>
+            <a href="#AC-05" class="msg-link" id="sb-AC-05" data-id="AC-05">
+              <span class="msg-link-id">AC-05</span>
+              <span class="msg-link-name">Know who&#039;s ready to buy right now (4/6)</span>
+              <span class="msg-link-ch">email</span>
+            </a>
+            <a href="#AC-06" class="msg-link" id="sb-AC-06" data-id="AC-06">
+              <span class="msg-link-id">AC-06</span>
+              <span class="msg-link-name">Spy on their tech stack (5/6)</span>
+              <span class="msg-link-ch">email</span>
+            </a>
+            <a href="#AC-07" class="msg-link" id="sb-AC-07" data-id="AC-07">
+              <span class="msg-link-id">AC-07</span>
+              <span class="msg-link-name">Spy on their tech stack (5/6)</span>
+              <span class="msg-link-ch">in-app</span>
+            </a>
+            <a href="#AC-08" class="msg-link" id="sb-AC-08" data-id="AC-08">
+              <span class="msg-link-id">AC-08</span>
+              <span class="msg-link-name">Find companies with fresh funding (5.5/6)</span>
+              <span class="msg-link-ch">email</span>
+            </a>
+            <a href="#AC-09" class="msg-link" id="sb-AC-09" data-id="AC-09">
+              <span class="msg-link-id">AC-09</span>
+              <span class="msg-link-name">Push leads straight to your CRM (6/6)</span>
+              <span class="msg-link-ch">email</span>
+            </a>
+            <a href="#AC-10" class="msg-link" id="sb-AC-10" data-id="AC-10">
+              <span class="msg-link-id">AC-10</span>
+              <span class="msg-link-name">Push leads straight to your CRM (6/6)</span>
+              <span class="msg-link-ch">in-app</span>
+            </a>
+          </div>
+          <div class="stage-group">
+            <div class="stage-group-header">
+              <span class="stage-badge" style="background:#fff3cd;color:#ffc107">Revenue</span>
+              <span class="text-xs text-gray-400">7</span>
+            </div>
+            <a href="#RV-01" class="msg-link" id="sb-RV-01" data-id="RV-01">
+              <span class="msg-link-id">RV-01</span>
+              <span class="msg-link-name">Your credits are running low</span>
+              <span class="msg-link-ch">email</span>
+            </a>
+            <a href="#RV-02" class="msg-link" id="sb-RV-02" data-id="RV-02">
+              <span class="msg-link-id">RV-02</span>
+              <span class="msg-link-name">Your credits are running low</span>
+              <span class="msg-link-ch">in-app</span>
+            </a>
+            <a href="#RV-03" class="msg-link" id="sb-RV-03" data-id="RV-03">
+              <span class="msg-link-id">RV-03</span>
+              <span class="msg-link-name">You&#039;ve used all your credits</span>
+              <span class="msg-link-ch">email</span>
+            </a>
+            <a href="#RV-04" class="msg-link" id="sb-RV-04" data-id="RV-04">
+              <span class="msg-link-id">RV-04</span>
+              <span class="msg-link-name">You&#039;ve used all your credits</span>
+              <span class="msg-link-ch">in-app</span>
+            </a>
+            <a href="#RV-05" class="msg-link" id="sb-RV-05" data-id="RV-05">
+              <span class="msg-link-id">RV-05</span>
+              <span class="msg-link-name">Your trial ends in {{days_left}} days</span>
+              <span class="msg-link-ch">email</span>
+            </a>
+            <a href="#RV-06" class="msg-link" id="sb-RV-06" data-id="RV-06">
+              <span class="msg-link-id">RV-06</span>
+              <span class="msg-link-name">Your trial ends in {{days_left}} days</span>
+              <span class="msg-link-ch">in-app</span>
+            </a>
+            <a href="#RV-07" class="msg-link" id="sb-RV-07" data-id="RV-07">
+              <span class="msg-link-id">RV-07</span>
+              <span class="msg-link-name">Your trial expired — here&#039;s what you keep</span>
+              <span class="msg-link-ch">email</span>
+            </a>
+          </div>
+          <div class="stage-group">
+            <div class="stage-group-header">
+              <span class="stage-badge" style="background:#ffe5cc;color:#fd7e14">Retention</span>
+              <span class="text-xs text-gray-400">5</span>
+            </div>
+            <a href="#RT-01" class="msg-link" id="sb-RT-01" data-id="RT-01">
+              <span class="msg-link-id">RT-01</span>
+              <span class="msg-link-name">Your week in SignalStack</span>
+              <span class="msg-link-ch">email</span>
+            </a>
+            <a href="#RT-02" class="msg-link" id="sb-RT-02" data-id="RT-02">
+              <span class="msg-link-id">RT-02</span>
+              <span class="msg-link-name">Your leads are waiting</span>
+              <span class="msg-link-ch">email</span>
+            </a>
+            <a href="#RT-03" class="msg-link" id="sb-RT-03" data-id="RT-03">
+              <span class="msg-link-id">RT-03</span>
+              <span class="msg-link-name">Your leads are waiting</span>
+              <span class="msg-link-ch">in-app</span>
+            </a>
+            <a href="#RT-04" class="msg-link" id="sb-RT-04" data-id="RT-04">
+              <span class="msg-link-id">RT-04</span>
+              <span class="msg-link-name">While you were away, {{prospect_count}} new companies matched your ICP</span>
+              <span class="msg-link-ch">email</span>
+            </a>
+            <a href="#RT-05" class="msg-link" id="sb-RT-05" data-id="RT-05">
+              <span class="msg-link-id">RT-05</span>
+              <span class="msg-link-name">Should I close your account?</span>
+              <span class="msg-link-ch">email</span>
+            </a>
+          </div>
+          <div class="stage-group">
+            <div class="stage-group-header">
+              <span class="stage-badge" style="background:#e8d5f5;color:#6f42c1">Referral</span>
+              <span class="text-xs text-gray-400">3</span>
+            </div>
+            <a href="#RF-01" class="msg-link" id="sb-RF-01" data-id="RF-01">
+              <span class="msg-link-id">RF-01</span>
+              <span class="msg-link-name">Your team is missing out</span>
+              <span class="msg-link-ch">email</span>
+            </a>
+            <a href="#RF-02" class="msg-link" id="sb-RF-02" data-id="RF-02">
+              <span class="msg-link-id">RF-02</span>
+              <span class="msg-link-name">Your team is missing out</span>
+              <span class="msg-link-ch">in-app</span>
+            </a>
+            <a href="#RF-03" class="msg-link" id="sb-RF-03" data-id="RF-03">
+              <span class="msg-link-id">RF-03</span>
+              <span class="msg-link-name">Know someone who&#039;d love SignalStack?</span>
+              <span class="msg-link-ch">email</span>
+            </a>
+          </div>
+    </div>
+
+    <!-- Preview area -->
+    <div class="preview-main" id="preview-main">
+      <div class="preview-empty" id="empty-state">
+        Select a message from the sidebar to preview
+      </div>
+      <div class="preview-wrapper" id="preview-wrapper" style="display:none"></div>
+    </div>
+  </div>
+
+  <script>
+    const messages = JSON.parse(document.getElementById('msg-data').textContent);
+    const messageContent = JSON.parse(document.getElementById('content-data').textContent);
+    const productName = "SignalStack";
+
+    const stageMeta = {"TX":{"label":"Transactional","color":"#666","bg":"#f0f0f0"},"AQ":{"label":"Acquisition","color":"#28a745","bg":"#d4edda"},"AC":{"label":"Activation","color":"#007bff","bg":"#cce5ff"},"RV":{"label":"Revenue","color":"#ffc107","bg":"#fff3cd"},"RT":{"label":"Retention","color":"#fd7e14","bg":"#ffe5cc"},"RF":{"label":"Referral","color":"#6f42c1","bg":"#e8d5f5"}};
+
+    // ---- Helpers ----
+    function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+    function getMsgChannel(m) { return m.channel || (m.channels && m.channels[0]) || 'email'; }
+
+    function md(text) {
+      if (!text) return '';
+      return text
+        .replace(/\*\*\[(.+?)\]\*\*/g, function(_, t) { return '<span class="preview-cta" style="background:#3b82f6">' + esc(t) + '</span>'; })
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/\{\{(\w+)\}\}/g, '<span class="token">{{$1}}</span>')
+        .replace(/\n\n/g, '</p><p>')
+        .replace(/\n/g, '<br>');
+    }
+
+    // ---- Parse channel content from markdown ----
+    function parseContent(rawContent, channel) {
+      if (!rawContent) return null;
+
+      var channelNames = { 'email': 'Email', 'in-app': 'In-App', 'sms': 'SMS', 'push': 'Push Notification' };
+      var sectionName = channelNames[channel] || channel;
+
+      // Split by ## headers
+      var sections = rawContent.split(/^## /m);
+      var body = rawContent;
+
+      for (var i = 0; i < sections.length; i++) {
+        if (sections[i].indexOf(sectionName) === 0) {
+          body = sections[i].substring(sectionName.length).trim();
+          break;
+        }
+      }
+
+      // Remove trailing --- separators
+      body = body.replace(/\n---\s*$/, '').trim();
+
+      var result = { raw: body };
+
+      // Extract **Subject:**
+      var m1 = body.match(/\*\*Subject:\*\*\s*(.+)/);
+      if (m1) { result.subject = m1[1].trim(); body = body.replace(m1[0], ''); }
+
+      // Extract **Preheader:**
+      var m2 = body.match(/\*\*Preheader:\*\*\s*(.+)/);
+      if (m2) { result.preheader = m2[1].trim(); body = body.replace(m2[0], ''); }
+
+      // Extract **Title:**
+      var m3 = body.match(/\*\*Title:\*\*\s*(.+)/);
+      if (m3) { result.title = m3[1].trim(); body = body.replace(m3[0], ''); }
+
+      // Extract **Body:** (for in-app)
+      var m4 = body.match(/\*\*Body:\*\*\s*(.+)/);
+      if (m4) { result.bodyText = m4[1].trim(); body = body.replace(m4[0], ''); }
+
+      // Extract **CTA:**
+      var m5 = body.match(/\*\*CTA:\*\*\s*(.+)/);
+      if (m5) { result.cta = m5[1].trim(); body = body.replace(m5[0], ''); }
+
+      // Extract **[CTA Text]**
+      var m6 = body.match(/\*\*\[(.+?)\]\*\*/);
+      if (m6) { result.ctaBtn = m6[1].trim(); }
+
+      result.body = body.trim();
+      return result;
+    }
+
+    // ---- Channel renderers ----
+    function renderEmailPreview(msg, parsed) {
+      var subject = (parsed && parsed.subject) || msg.subject || '(Subject not generated)';
+      var preheader = (parsed && parsed.preheader) || msg.preheader || '';
+      var bodyHtml = parsed ? '<p>' + md(parsed.body) + '</p>' : '';
+
+      if (!parsed) {
+        bodyHtml = '<div class="no-content-notice">Message copy not yet generated.<br><br><span style="font-size:0.8rem">Run the <strong>generate-messages</strong> skill to create copy.</span></div>';
+        if (msg.comments) bodyHtml += '<p style="margin-top:16px;color:#6b7280;font-size:0.85rem"><strong>Notes:</strong> ' + esc(msg.comments) + '</p>';
+      }
+
+      return '<div class="email-frame">' +
+        '<div class="email-toolbar"><div class="email-dot" style="background:#ff5f57"></div><div class="email-dot" style="background:#ffbd2e"></div><div class="email-dot" style="background:#28c840"></div></div>' +
+        '<div class="email-header">' +
+          '<div><span class="email-label">From:</span> ' + esc(msg.from) + '</div>' +
+          '<div><span class="email-label">To:</span> {{first_name}} &lt;user@example.com&gt;</div>' +
+          '<div><span class="email-label">Subject:</span> <span class="email-subject-line">' + md(subject) + '</span></div>' +
+        '</div>' +
+        (preheader ? '<div class="email-preheader">' + md(preheader) + '</div>' : '') +
+        '<div class="email-body">' + bodyHtml + '</div>' +
+      '</div>';
+    }
+
+    function renderInAppPreview(msg, parsed) {
+      var title = (parsed && parsed.title) || msg.name || 'Notification';
+      var body = (parsed && (parsed.bodyText || parsed.body)) || '';
+      var cta = (parsed && parsed.cta) || msg.cta.text || 'OK';
+
+      var inner;
+      if (!parsed) {
+        inner = '<div class="no-content-notice" style="margin:0;border:none;background:transparent">Message copy not yet generated.</div>';
+        if (msg.comments) inner += '<p style="color:#6b7280;font-size:0.85rem">' + esc(msg.comments) + '</p>';
+      } else {
+        inner = '<div class="inapp-body">' + md(body) + '</div>';
+      }
+
+      return '<div class="inapp-backdrop">' +
+        '<div class="inapp-modal">' +
+          '<button class="inapp-close">&times;</button>' +
+          '<div class="inapp-title">' + md(title) + '</div>' +
+          inner +
+          '<span class="preview-cta" style="background:#8b5cf6;display:block;text-align:center;border-radius:10px">' + esc(cta) + '</span>' +
+        '</div>' +
+      '</div>';
+    }
+
+    function renderSmsPreview(msg, parsed) {
+      var body = (parsed && parsed.body) || '';
+
+      var bubbleContent;
+      if (!parsed) {
+        bubbleContent = msg.comments ? esc(msg.comments) : '<em style="color:#8e8e93">Copy not yet generated</em>';
+      } else {
+        bubbleContent = md(body);
+      }
+
+      return '<div class="sms-phone">' +
+        '<div class="sms-status-bar"><span>9:41</span><span>\u2022\u2022\u2022\u2022\u2022</span></div>' +
+        '<div class="sms-header">' + esc(msg.from || productName) + '</div>' +
+        '<div class="sms-body">' +
+          '<div class="sms-bubble">' + bubbleContent + '</div>' +
+          '<div class="sms-time">Just now</div>' +
+        '</div>' +
+        '<div style="padding:8px 0"><div class="sms-home"></div></div>' +
+      '</div>';
+    }
+
+    function renderPushPreview(msg, parsed) {
+      var title = (parsed && parsed.title) || msg.name || 'Notification';
+      var body = (parsed && (parsed.bodyText || parsed.body)) || '';
+      var initial = productName.charAt(0).toUpperCase();
+
+      var bodyHtml;
+      if (!parsed) {
+        bodyHtml = msg.comments ? '<div class="push-body-text">' + esc(msg.comments) + '</div>' : '<div class="push-body-text" style="color:#9ca3af"><em>Copy not yet generated</em></div>';
+      } else {
+        bodyHtml = '<div class="push-body-text">' + md(body).substring(0, 200) + '</div>';
+      }
+
+      return '<div class="push-phone">' +
+        '<div class="push-status-bar"><span>9:41</span><span>\u2022\u2022\u2022\u2022\u2022</span></div>' +
+        '<div class="push-card">' +
+          '<div class="push-icon">' + initial + '</div>' +
+          '<div class="push-content">' +
+            '<div class="push-app-name">' + esc(productName) + ' &middot; now</div>' +
+            '<div class="push-title">' + md(title) + '</div>' +
+            bodyHtml +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }
+
+    // ---- Details card ----
+    function renderDetails(msg) {
+      var guards = msg.guards && msg.guards.length ? msg.guards.map(function(g) { return esc(g.condition); }).join('; ') : '\u2014';
+      var supps = msg.suppressions && msg.suppressions.length ? msg.suppressions.map(function(s) { return esc(s.condition); }).join('; ') : '\u2014';
+      var tags = msg.tags && msg.tags.length ? msg.tags.map(function(t) { return '<span style="display:inline-block;padding:1px 6px;border-radius:9999px;font-size:0.7rem;background:#e5e7eb;color:#374151;margin:1px">' + esc(t) + '</span>'; }).join(' ') : '\u2014';
+
+      return '<div class="details-card">' +
+        '<h3>Message Details</h3>' +
+        '<div class="details-grid">' +
+          '<div><span class="detail-label">Trigger:</span></div><div class="detail-value">' + esc(msg.trigger.event) + ' (' + esc(msg.trigger.type) + ')</div>' +
+          '<div><span class="detail-label">Wait:</span></div><div class="detail-value">' + esc(msg.wait) + '</div>' +
+          '<div><span class="detail-label">Segment:</span></div><div class="detail-value">' + esc(msg.segment) + '</div>' +
+          '<div><span class="detail-label">Format:</span></div><div class="detail-value">' + esc(msg.format) + '</div>' +
+          '<div><span class="detail-label">Guards:</span></div><div class="detail-value">' + guards + '</div>' +
+          '<div><span class="detail-label">Suppressions:</span></div><div class="detail-value">' + supps + '</div>' +
+          '<div><span class="detail-label">Goal:</span></div><div class="detail-value detail-full">' + esc(msg.goal) + '</div>' +
+          (msg.comments ? '<div><span class="detail-label">Comments:</span></div><div class="detail-value detail-full">' + esc(msg.comments) + '</div>' : '') +
+          '<div><span class="detail-label">Tags:</span></div><div class="detail-value">' + tags + '</div>' +
+        '</div>' +
+      '</div>';
+    }
+
+    // ---- Main render ----
+    var currentIdx = -1;
+
+    function renderMessage(id) {
+      var msg = messages.find(function(m) { return m.id === id; });
+      if (!msg) return;
+
+      currentIdx = messages.indexOf(msg);
+      var channel = getMsgChannel(msg);
+      var raw = messageContent[id] || null;
+      var parsed = parseContent(raw, channel);
+
+      // Channel label
+      var chClass = channel.replace(/[^a-z]/g, '-');
+      var channelBadge = '<span class="channel-label ' + chClass + '">' + esc(channel) + '</span>';
+
+      // Stage badge
+      var meta = stageMeta[msg.stage] || { label: msg.stage, color: '#666', bg: '#f0f0f0' };
+      var stageBadge = '<span class="stage-badge" style="background:' + meta.bg + ';color:' + meta.color + '">' + esc(meta.label) + '</span>';
+
+      // Message name header
+      var header = '<div style="margin-bottom:8px;display:flex;align-items:center;gap:8px">' +
+        stageBadge + channelBadge +
+        '<span style="font-family:monospace;font-size:0.8rem;color:#9ca3af">' + esc(msg.id) + '</span>' +
+        '</div>' +
+        '<h2 style="font-size:1.25rem;font-weight:700;margin:0 0 20px">' + esc(msg.name) + '</h2>';
+
+      // Channel-specific preview
+      var preview;
+      switch (channel) {
+        case 'email': preview = renderEmailPreview(msg, parsed); break;
+        case 'in-app': preview = renderInAppPreview(msg, parsed); break;
+        case 'sms': preview = renderSmsPreview(msg, parsed); break;
+        case 'push': preview = renderPushPreview(msg, parsed); break;
+        default: preview = renderEmailPreview(msg, parsed);
+      }
+
+      // Prev / next nav
+      var prevId = currentIdx > 0 ? messages[currentIdx - 1].id : null;
+      var nextId = currentIdx < messages.length - 1 ? messages[currentIdx + 1].id : null;
+      var nav = '<div class="nav-bar">' +
+        (prevId ? '<a href="#' + prevId + '" class="nav-btn">&larr; ' + esc(prevId) + '</a>' : '<span></span>') +
+        (nextId ? '<a href="#' + nextId + '" class="nav-btn">' + esc(nextId) + ' &rarr;</a>' : '<span></span>') +
+        '</div>';
+
+      var wrapper = document.getElementById('preview-wrapper');
+      wrapper.innerHTML = header + preview + renderDetails(msg) + nav;
+      wrapper.style.display = 'block';
+      document.getElementById('empty-state').style.display = 'none';
+
+      // Update sidebar active state
+      document.querySelectorAll('.msg-link.active').forEach(function(el) { el.classList.remove('active'); });
+      var sbItem = document.getElementById('sb-' + id);
+      if (sbItem) { sbItem.classList.add('active'); sbItem.scrollIntoView({ block: 'nearest' }); }
+    }
+
+    // ---- Hash routing ----
+    function onHashChange() {
+      var id = location.hash.slice(1);
+      if (id) renderMessage(decodeURIComponent(id));
+    }
+    window.addEventListener('hashchange', onHashChange);
+
+    // ---- Keyboard nav ----
+    document.addEventListener('keydown', function(e) {
+      if (currentIdx < 0) return;
+      if (e.key === 'ArrowDown' || e.key === 'j') {
+        e.preventDefault();
+        if (currentIdx < messages.length - 1) location.hash = '#' + messages[currentIdx + 1].id;
+      }
+      if (e.key === 'ArrowUp' || e.key === 'k') {
+        e.preventDefault();
+        if (currentIdx > 0) location.hash = '#' + messages[currentIdx - 1].id;
+      }
+    });
+
+    // ---- Initial load ----
+    if (location.hash) onHashChange();
+  </script>
+
+  <footer style="text-align:center;padding:24px;font-size:0.8rem;color:#9ca3af;border-top:1px solid #e5e7eb">
+    <a href="https://github.com/sr-kai/mango-lollipop" style="color:#6b7280;text-decoration:none;font-weight:600">Mango Lollipop</a> &mdash; AI-powered lifecycle messaging for SaaS<br>
+    Made by Sasha Kai with probably too much coffee.
+  </footer>
+</body>
+</html>

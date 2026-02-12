@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Event Implementation Spec - SignalStack</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  darkMode: 'media',
+  theme: {
+    extend: {
+      colors: {
+        critical: { bg: '#fef2f2', border: '#ef4444', text: '#991b1b', badge: '#dc2626' },
+        high: { bg: '#fff7ed', border: '#f97316', text: '#9a3412', badge: '#ea580c' },
+        medium: { bg: '#eff6ff', border: '#3b82f6', text: '#1e40af', badge: '#2563eb' },
+        low: { bg: '#f9fafb', border: '#9ca3af', text: '#4b5563', badge: '#6b7280' },
+      }
+    }
+  }
+}
+</script>
+<style>
+  @media (prefers-color-scheme: dark) {
+    body { background: #111827; color: #e5e7eb; }
+    .card { background: #1f2937; border-color: #374151; }
+    .card-header { background: #111827; }
+    table th { background: #1f2937; }
+    table td { border-color: #374151; }
+    table tr:hover td { background: #1f2937; }
+    code, .code-block { background: #1f2937; }
+    .code-block { border-color: #374151; }
+    .filter-btn { background: #374151; color: #e5e7eb; }
+    .filter-btn:hover { background: #4b5563; }
+    .filter-btn.active { background: #2563eb; color: white; }
+  }
+  .code-block { position: relative; }
+  .copy-btn { position: absolute; top: 0.5rem; right: 0.5rem; }
+  .detail-section { display: none; }
+  .detail-section.open { display: block; }
+  .sort-header { cursor: pointer; user-select: none; }
+  .sort-header:hover { color: #2563eb; }
+</style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen">
+
+<script>
+// ============================================================================
+// EMBEDDED DATA
+// ============================================================================
+const EVENTS = [
+  // --- Identity & Account ---
+  { name: "user.signed_up", category: "Identity & Account", triggerType: "event", messages: ["TX-01"], guardedBy: [], suppressedBy: [], priority: "Medium", description: "Fires when a new user creates an account.", whenToFire: "Immediately after successful account creation (form submit or OAuth callback).", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-11T10:30:00Z"' }, { name: "email", type: "string", required: true, example: '"sdrsam@acme.co"' }, { name: "signup_method", type: "string", required: false, example: '"email" | "google" | "github"' }, { name: "referral_source", type: "string", required: false, example: '"organic" | "partner:hubspot"' } ], notes: "This is the very first event in the lifecycle. Triggers email verification." },
+  { name: "user.email_verified", category: "Identity & Account", triggerType: "event", messages: ["AQ-01","AQ-02","AQ-03","AC-01","AC-02","AC-03","AC-04","AC-05","AC-06","AC-07","AC-08","AC-09","AC-10"], guardedBy: [], suppressedBy: [], priority: "Critical", description: "Fires when a user successfully verifies their email address.", whenToFire: "When the user clicks the verification link and the token is validated.", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-11T10:35:00Z"' }, { name: "email", type: "string", required: true, example: '"sdrsam@acme.co"' }, { name: "plan", type: "string", required: true, example: '"free"' } ], notes: "THE most important event. 13 messages depend on this. The entire onboarding and activation sequence starts here." },
+  { name: "user.password_reset_requested", category: "Identity & Account", triggerType: "event", messages: ["TX-02"], guardedBy: [], suppressedBy: [], priority: "Medium", description: "Fires when a user requests a password reset.", whenToFire: "When the password reset form is submitted with a valid email address.", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-11T10:30:00Z"' }, { name: "email", type: "string", required: true, example: '"sdrsam@acme.co"' }, { name: "reset_token_expiry", type: "string", required: false, example: '"2026-02-11T11:30:00Z"' } ], notes: "Fire even if the email doesn't exist in the system (for security -- don't reveal whether an account exists)." },
+  { name: "user.deletion_requested", category: "Identity & Account", triggerType: "event", messages: ["TX-05"], guardedBy: [], suppressedBy: [], priority: "Medium", description: "Fires when a user requests account deletion.", whenToFire: "When the user confirms account deletion in settings.", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-11T10:30:00Z"' }, { name: "email", type: "string", required: true, example: '"sdrsam@acme.co"' }, { name: "deletion_date", type: "string", required: true, example: '"2026-03-13T10:30:00Z"' }, { name: "plan", type: "string", required: false, example: '"basic"' } ], notes: "30-day grace period. The confirmation email includes a cancellation link." },
+  { name: "user.profile_completed", category: "Identity & Account", triggerType: "event", messages: [], guardedBy: [], suppressedBy: [], priority: "Low", description: "Fires when a user completes their profile (name, company, role).", whenToFire: "When all required profile fields are filled and saved.", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-11T10:30:00Z"' }, { name: "company_name", type: "string", required: false, example: '"Acme Corp"' }, { name: "role", type: "string", required: false, example: '"SDR"' } ], notes: "Not currently triggering any messages but useful for segmentation." },
+  { name: "user.invited_teammate", category: "Identity & Account", triggerType: "event", messages: [], guardedBy: [], suppressedBy: [], priority: "Low", description: "Fires when a user sends a team invitation.", whenToFire: "When the invitation email is successfully queued.", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-11T10:30:00Z"' }, { name: "invitee_email", type: "string", required: true, example: '"colleague@acme.co"' }, { name: "team_size", type: "number", required: false, example: "3" } ], notes: "Also update the user.teammates_invited profile attribute (increment by 1)." },
+
+  // --- Feature Usage ---
+  { name: "feature.ai_search_used_first_time", category: "Feature Usage", triggerType: "event", messages: [], guardedBy: [], suppressedBy: ["AQ-03","AC-01","AC-02"], priority: "Low", description: "Fires when a user runs their first AI-powered ICP search.", whenToFire: "On the first successful AI search that returns results. Only fire once per user.", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-11T10:30:00Z"' }, { name: "feature_name", type: "string", required: true, example: '"ai_search"' }, { name: "session_id", type: "string", required: false, example: '"ses_789"' }, { name: "results_count", type: "number", required: false, example: "47" } ], notes: "One-time event. Set feature.ai_search_used = true in user profile when this fires. Suppresses onboarding emails about AI search." },
+  { name: "feature.contact_exported_first_time", category: "Feature Usage", triggerType: "event", messages: [], guardedBy: [], suppressedBy: ["AC-03","AC-04"], priority: "Low", description: "Fires when a user exports/reveals contacts for the first time.", whenToFire: "On the user's first contact reveal or export action. Only fire once per user.", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-11T10:30:00Z"' }, { name: "feature_name", type: "string", required: true, example: '"contact_export"' }, { name: "contacts_count", type: "number", required: false, example: "5" }, { name: "export_method", type: "string", required: false, example: '"csv" | "crm" | "clipboard"' } ], notes: "THIS IS THE AHA MOMENT. Set feature.contact_exported = true in user profile. Consider also tracking the non-first-time version for analytics." },
+  { name: "feature.buyer_intent_used_first_time", category: "Feature Usage", triggerType: "event", messages: [], guardedBy: [], suppressedBy: ["AC-05"], priority: "Low", description: "Fires when a user accesses buyer intent data for the first time.", whenToFire: "When the user first views the buyer intent dashboard or applies a buyer intent filter.", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-11T10:30:00Z"' }, { name: "feature_name", type: "string", required: true, example: '"buyer_intent"' }, { name: "topics_viewed", type: "number", required: false, example: "3" } ], notes: "One-time event. Set feature.buyer_intent_used = true in user profile." },
+  { name: "feature.technographics_used_first_time", category: "Feature Usage", triggerType: "event", messages: [], guardedBy: [], suppressedBy: ["AC-06","AC-07"], priority: "Low", description: "Fires when a user first uses the technographics filter.", whenToFire: "When the user applies a technology stack filter in search for the first time.", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-11T10:30:00Z"' }, { name: "feature_name", type: "string", required: true, example: '"technographics"' }, { name: "tech_filtered", type: "string", required: false, example: '"Salesforce"' } ], notes: "One-time event. Set feature.technographics_used = true in user profile." },
+  { name: "feature.funding_insights_used_first_time", category: "Feature Usage", triggerType: "event", messages: [], guardedBy: [], suppressedBy: ["AC-08"], priority: "Low", description: "Fires when a user first uses funding insights.", whenToFire: "When the user applies a funding filter or views funding data on a company.", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-11T10:30:00Z"' }, { name: "feature_name", type: "string", required: true, example: '"funding_insights"' } ], notes: "One-time event. Set feature.funding_insights_used = true in user profile." },
+  { name: "feature.crm_integration_connected", category: "Feature Usage", triggerType: "event", messages: [], guardedBy: [], suppressedBy: ["AC-09","AC-10"], priority: "Low", description: "Fires when a user successfully connects a CRM integration.", whenToFire: "After successful OAuth callback and first sync confirmation from the CRM.", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-11T10:30:00Z"' }, { name: "feature_name", type: "string", required: true, example: '"crm_integration"' }, { name: "crm_provider", type: "string", required: true, example: '"pipedrive" | "hubspot" | "lemlist"' } ], notes: "Set feature.crm_integration_connected = true in user profile. Track which CRM for analytics." },
+
+  // --- Onboarding ---
+  { name: "onboarding.completed", category: "Onboarding", triggerType: "event", messages: [], guardedBy: ["AQ-03"], suppressedBy: [], priority: "Low", description: "Fires when a user completes all onboarding steps.", whenToFire: "When the user finishes the last onboarding step or dismisses the onboarding flow.", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-11T10:30:00Z"' }, { name: "steps_completed", type: "number", required: false, example: "6" }, { name: "total_steps", type: "number", required: false, example: "6" }, { name: "time_to_complete", type: "number", required: false, example: "1800" } ], notes: "Set onboarding.completed = true in user profile. Used as a guard condition in AQ-03." },
+
+  // --- Product Activity ---
+  { name: "search.performed", category: "Product Activity", triggerType: "event", messages: [], guardedBy: [], suppressedBy: [], priority: "Low", description: "Fires on every search performed (not just the first).", whenToFire: "When a user runs any search query and results are returned.", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-11T10:30:00Z"' }, { name: "query_type", type: "string", required: false, example: '"ai" | "manual" | "saved"' }, { name: "results_count", type: "number", required: false, example: "142" }, { name: "filters_used", type: "string[]", required: false, example: '["technographics","funding"]' } ], notes: "High-frequency event. Not triggering messages currently, but useful for engagement analytics and the weekly usage recap." },
+  { name: "contact.revealed", category: "Product Activity", triggerType: "event", messages: [], guardedBy: [], suppressedBy: [], priority: "Low", description: "Fires when a user reveals a contact's email.", whenToFire: "When a contact's verified email is shown to the user (credit consumed).", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-11T10:30:00Z"' }, { name: "contact_id", type: "string", required: false, example: '"con_xyz"' }, { name: "credits_used", type: "number", required: false, example: "1" }, { name: "credits_remaining", type: "number", required: false, example: "42" } ], notes: "Each reveal consumes credits. Track credits_remaining to feed the credits.running_low check." },
+  { name: "contact.exported", category: "Product Activity", triggerType: "event", messages: [], guardedBy: [], suppressedBy: [], priority: "Low", description: "Fires when a user exports contacts.", whenToFire: "When contacts are exported to CSV, CRM, or clipboard.", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-11T10:30:00Z"' }, { name: "contacts_count", type: "number", required: false, example: "25" }, { name: "export_method", type: "string", required: false, example: '"csv" | "crm" | "clipboard"' } ], notes: "Track for weekly usage recap and milestone calculations." },
+  { name: "list.created", category: "Product Activity", triggerType: "event", messages: [], guardedBy: [], suppressedBy: [], priority: "Low", description: "Fires when a user creates a new lead list.", whenToFire: "When a new list is saved with a name.", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-11T10:30:00Z"' }, { name: "list_name", type: "string", required: false, example: '"Series A Startups"' } ], notes: "Not triggering messages currently." },
+  { name: "export.csv_downloaded", category: "Product Activity", triggerType: "event", messages: [], guardedBy: [], suppressedBy: [], priority: "Low", description: "Fires when a user downloads a CSV export.", whenToFire: "When the CSV file download is initiated.", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-11T10:30:00Z"' }, { name: "contacts_count", type: "number", required: false, example: "50" } ], notes: "Not triggering messages currently." },
+  { name: "integration.synced", category: "Product Activity", triggerType: "event", messages: [], guardedBy: [], suppressedBy: [], priority: "Low", description: "Fires when a CRM sync completes.", whenToFire: "After contacts are successfully pushed to a connected CRM.", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-11T10:30:00Z"' }, { name: "crm_provider", type: "string", required: false, example: '"hubspot"' }, { name: "contacts_synced", type: "number", required: false, example: "12" } ], notes: "Not triggering messages currently." },
+
+  // --- Billing & Subscription ---
+  { name: "subscription.payment_processed", category: "Billing & Subscription", triggerType: "event", messages: ["TX-03"], guardedBy: [], suppressedBy: [], priority: "Medium", description: "Fires when a payment is successfully processed.", whenToFire: "On successful charge via payment processor (Stripe webhook recommended).", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-11T10:30:00Z"' }, { name: "plan", type: "string", required: true, example: '"basic"' }, { name: "amount", type: "number", required: true, example: "19.00" }, { name: "currency", type: "string", required: true, example: '"USD"' }, { name: "billing_period", type: "string", required: false, example: '"monthly"' }, { name: "next_billing_date", type: "string", required: false, example: '"2026-03-11T00:00:00Z"' } ], notes: "Best implemented via Stripe webhook (invoice.payment_succeeded). Include all receipt details." },
+  { name: "subscription.changed", category: "Billing & Subscription", triggerType: "event", messages: ["TX-04"], guardedBy: [], suppressedBy: [], priority: "Medium", description: "Fires when a user's subscription plan changes.", whenToFire: "When a plan upgrade, downgrade, or modification is confirmed.", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-11T10:30:00Z"' }, { name: "previous_plan", type: "string", required: true, example: '"free"' }, { name: "new_plan", type: "string", required: true, example: '"basic"' }, { name: "new_credits", type: "number", required: false, example: "1000" }, { name: "effective_date", type: "string", required: false, example: '"2026-02-11T00:00:00Z"' } ], notes: "Update user.plan profile attribute when this fires." },
+  { name: "trial.started", category: "Billing & Subscription", triggerType: "event", messages: [], guardedBy: [], suppressedBy: [], priority: "Low", description: "Fires when a user starts a trial.", whenToFire: "When the trial period begins (may be at signup or on explicit trial activation).", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-11T10:30:00Z"' }, { name: "plan", type: "string", required: true, example: '"trial"' }, { name: "trial_end_date", type: "string", required: true, example: '"2026-02-25T00:00:00Z"' }, { name: "days_remaining", type: "number", required: true, example: "14" } ], notes: "Set user.plan = 'trial' in profile. Store trial_end_date for the trial.ending_soon background job." },
+  { name: "trial.ending_soon", category: "Billing & Subscription", triggerType: "event", messages: ["RV-05","RV-06"], guardedBy: [], suppressedBy: [], priority: "High", description: "Fires 3 days before a trial expires.", whenToFire: "Scheduled check: when current date is 3 days before trial_end_date and user is still on trial plan.", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-22T00:00:00Z"' }, { name: "plan", type: "string", required: true, example: '"trial"' }, { name: "days_remaining", type: "number", required: true, example: "3" }, { name: "trial_end_date", type: "string", required: true, example: '"2026-02-25T00:00:00Z"' } ], notes: "Requires a daily background job that checks trial expiry dates. Fire once -- don't re-fire on subsequent days." },
+  { name: "trial.expired", category: "Billing & Subscription", triggerType: "event", messages: ["RV-07"], guardedBy: [], suppressedBy: [], priority: "Medium", description: "Fires when a trial period ends.", whenToFire: "When the trial_end_date is reached and the user has not upgraded.", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-25T00:00:00Z"' }, { name: "plan", type: "string", required: true, example: '"trial"' }, { name: "days_active", type: "number", required: false, example: "14" }, { name: "features_used", type: "number", required: false, example: "4" } ], notes: "Requires a daily background job. Update user.plan to 'free' (or 'expired') when this fires." },
+  { name: "credits.running_low", category: "Billing & Subscription", triggerType: "event", messages: ["RV-01","RV-02"], guardedBy: [], suppressedBy: [], priority: "High", description: "Fires when a user's credit balance drops below the warning threshold.", whenToFire: "When credits_remaining drops below 20% of the plan's total allocation. Fire once per billing cycle.", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-11T10:30:00Z"' }, { name: "credits_remaining", type: "number", required: true, example: "8" }, { name: "credits_total", type: "number", required: true, example: "50" }, { name: "plan", type: "string", required: true, example: '"free"' } ], notes: "Fire once per billing cycle to avoid spamming. Suggestion: set a credits_low_notified flag, reset on credits.monthly_reset." },
+  { name: "credits.exhausted", category: "Billing & Subscription", triggerType: "event", messages: ["RV-03","RV-04"], guardedBy: [], suppressedBy: [], priority: "High", description: "Fires when a user's credits reach zero.", whenToFire: "When a contact reveal or action fails due to zero credits remaining.", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-11T10:30:00Z"' }, { name: "plan", type: "string", required: true, example: '"free"' }, { name: "credits_used_this_cycle", type: "number", required: false, example: "50" } ], notes: "Fire once when credits first hit zero. Don't re-fire on subsequent zero-credit actions." },
+  { name: "credits.monthly_reset", category: "Billing & Subscription", triggerType: "event", messages: [], guardedBy: [], suppressedBy: [], priority: "Low", description: "Fires when monthly credits are reset.", whenToFire: "On billing cycle reset when credits are replenished.", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-03-01T00:00:00Z"' }, { name: "credits_allocated", type: "number", required: false, example: "50" }, { name: "plan", type: "string", required: false, example: '"free"' } ], notes: "Reset the credits_low_notified flag. Not triggering messages currently." },
+  { name: "subscription.created", category: "Billing & Subscription", triggerType: "event", messages: [], guardedBy: [], suppressedBy: [], priority: "Low", description: "Fires when a new subscription is created.", whenToFire: "When the first payment is confirmed and the subscription is active.", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-11T10:30:00Z"' }, { name: "plan", type: "string", required: true, example: '"basic"' }, { name: "amount", type: "number", required: true, example: "19.00" }, { name: "currency", type: "string", required: true, example: '"USD"' } ], notes: "Update user.plan. Distinct from subscription.changed (which is for plan modifications)." },
+  { name: "subscription.upgraded", category: "Billing & Subscription", triggerType: "event", messages: [], guardedBy: [], suppressedBy: [], priority: "Low", description: "Fires when a user upgrades their plan.", whenToFire: "When upgrade is confirmed (e.g., free -> basic, basic -> business).", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-11T10:30:00Z"' }, { name: "previous_plan", type: "string", required: true, example: '"free"' }, { name: "new_plan", type: "string", required: true, example: '"basic"' } ], notes: "Update user.plan. Also fires subscription.changed." },
+  { name: "subscription.downgraded", category: "Billing & Subscription", triggerType: "event", messages: [], guardedBy: [], suppressedBy: [], priority: "Low", description: "Fires when a user downgrades their plan.", whenToFire: "When downgrade is confirmed (e.g., business -> basic).", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-11T10:30:00Z"' }, { name: "previous_plan", type: "string", required: true, example: '"business"' }, { name: "new_plan", type: "string", required: true, example: '"basic"' } ], notes: "Update user.plan. Also fires subscription.changed." },
+  { name: "subscription.cancelled", category: "Billing & Subscription", triggerType: "event", messages: [], guardedBy: [], suppressedBy: [], priority: "Low", description: "Fires when a user cancels their subscription.", whenToFire: "When cancellation is confirmed. May still have access until end of billing period.", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-11T10:30:00Z"' }, { name: "plan", type: "string", required: true, example: '"basic"' }, { name: "effective_date", type: "string", required: false, example: '"2026-03-11T00:00:00Z"' }, { name: "reason", type: "string", required: false, example: '"too_expensive"' } ], notes: "Update user.plan to 'cancelled' on effective_date." },
+
+  // --- Retention (Behavioral) ---
+  { name: "user.inactive_3_days", category: "Retention", triggerType: "behavioral", messages: ["RT-02","RT-03"], guardedBy: [], suppressedBy: [], priority: "High", description: "Fires when a user has been inactive for 3 days.", whenToFire: "Daily background job: check if last_active_at is more than 3 days ago and less than or equal to 4 days ago.", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-14T00:00:00Z"' }, { name: "last_active_at", type: "string", required: true, example: '"2026-02-11T15:30:00Z"' }, { name: "days_inactive", type: "number", required: true, example: "3" } ], notes: "REQUIRES BACKGROUND JOB. Run daily at midnight. Only fire once per inactivity stretch -- if user returns and goes inactive again, fire again." },
+  { name: "user.inactive_7_days", category: "Retention", triggerType: "behavioral", messages: ["RT-04"], guardedBy: [], suppressedBy: [], priority: "Medium", description: "Fires when a user has been inactive for 7 days.", whenToFire: "Daily background job: check if last_active_at is more than 7 days ago and less than or equal to 8 days ago.", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-18T00:00:00Z"' }, { name: "last_active_at", type: "string", required: true, example: '"2026-02-11T15:30:00Z"' }, { name: "days_inactive", type: "number", required: true, example: "7" }, { name: "new_icp_matches", type: "number", required: false, example: "23" } ], notes: "REQUIRES BACKGROUND JOB. Run daily at midnight." },
+  { name: "user.inactive_14_days", category: "Retention", triggerType: "behavioral", messages: ["RT-05"], guardedBy: [], suppressedBy: [], priority: "Medium", description: "Fires when a user has been inactive for 14 days.", whenToFire: "Daily background job: check if last_active_at is more than 14 days ago and less than or equal to 15 days ago.", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-25T00:00:00Z"' }, { name: "last_active_at", type: "string", required: true, example: '"2026-02-11T15:30:00Z"' }, { name: "days_inactive", type: "number", required: true, example: "14" } ], notes: "REQUIRES BACKGROUND JOB. Last chance before marking user as churned." },
+  { name: "user.active_30_days", category: "Retention", triggerType: "behavioral", messages: ["RF-03"], guardedBy: [], suppressedBy: [], priority: "Medium", description: "Fires when a user has been active for 30 consecutive days.", whenToFire: "Daily background job: check if user has had at least one session in each of the last 30 days (or simpler: first_active_at > 30 days ago AND last_active_at within last 24h).", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-03-13T00:00:00Z"' }, { name: "days_active", type: "number", required: true, example: "30" }, { name: "total_searches", type: "number", required: false, example: "145" }, { name: "total_contacts_revealed", type: "number", required: false, example: "320" } ], notes: "REQUIRES BACKGROUND JOB. Fire once -- don't re-fire at day 31, 32, etc." },
+  { name: "usage.weekly_summary", category: "Retention", triggerType: "scheduled", messages: [], guardedBy: ["RT-01"], suppressedBy: [], priority: "Low", description: "Scheduled event for the weekly usage recap email.", whenToFire: "Every Friday at 9:00 AM (user's timezone or company default).", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-14T09:00:00Z"' }, { name: "searches_this_week", type: "number", required: false, example: "12" }, { name: "contacts_revealed_this_week", type: "number", required: false, example: "34" }, { name: "credits_used_this_week", type: "number", required: false, example: "34" }, { name: "credits_remaining", type: "number", required: false, example: "16" } ], notes: "REQUIRES SCHEDULED JOB. RT-01 uses trigger type 'scheduled' with schedule 'every friday 9am'. Guard: user.sessions_this_week >= 1 (don't send to inactive users)." },
+
+  // --- Milestones ---
+  { name: "milestone.first_success", category: "Milestones", triggerType: "event", messages: ["RF-01","RF-02"], guardedBy: [], suppressedBy: [], priority: "High", description: "Fires when a user hits their first significant milestone (e.g., 50+ contacts exported).", whenToFire: "When user's total_contacts_exported crosses the threshold (suggest 50). Fire once.", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-15T10:30:00Z"' }, { name: "milestone_name", type: "string", required: true, example: '"first_50_contacts"' }, { name: "milestone_value", type: "number", required: true, example: "50" } ], notes: "One-time event. Define what 'first success' means for SignalStack -- suggest 50 exported contacts as the threshold." },
+  { name: "milestone.reached", category: "Milestones", triggerType: "event", messages: [], guardedBy: [], suppressedBy: [], priority: "Low", description: "Generic milestone event for future milestones.", whenToFire: "When any defined milestone threshold is crossed.", properties: [ { name: "user_id", type: "string", required: true, example: '"usr_abc123"' }, { name: "timestamp", type: "string", required: true, example: '"2026-02-20T10:30:00Z"' }, { name: "milestone_name", type: "string", required: true, example: '"power_user_500_contacts"' }, { name: "milestone_value", type: "number", required: true, example: "500" } ], notes: "Not triggering messages currently. Use for future celebration/referral messages." }
+];
+
+const PROFILE_ATTRIBUTES = [
+  { attribute: "user.email_verified", type: "boolean", usedIn: ["AQ-01 (implicit)", "AQ-03 (implicit)"], description: "Whether the user has verified their email address." },
+  { attribute: "user.plan", type: "string", usedIn: ["AC-01 guard","AC-02 guard","AC-03 guard","AC-04 guard","AC-05 guard","AC-06 guard","AC-07 guard","AC-08 guard","AC-09 guard","AC-10 guard","RV-01 guard","RV-02 guard","RV-03 guard","RV-04 guard","RV-05 guard","RV-07 guard"], description: "Current subscription plan. Values: 'free', 'trial', 'basic', 'business', 'cancelled'." },
+  { attribute: "onboarding.completed", type: "boolean", usedIn: ["AQ-03 guard"], description: "Whether the user has completed all onboarding steps." },
+  { attribute: "feature.ai_search_used", type: "boolean", usedIn: ["AQ-03 suppression","AC-01 suppression","AC-02 suppression"], description: "Whether the user has performed at least one AI search." },
+  { attribute: "feature.contact_exported", type: "boolean", usedIn: ["AC-03 suppression","AC-04 suppression"], description: "Whether the user has exported/revealed contacts at least once." },
+  { attribute: "feature.buyer_intent_used", type: "boolean", usedIn: ["AC-05 suppression"], description: "Whether the user has used buyer intent signals." },
+  { attribute: "feature.technographics_used", type: "boolean", usedIn: ["AC-06 suppression","AC-07 suppression"], description: "Whether the user has used technographic profiling." },
+  { attribute: "feature.funding_insights_used", type: "boolean", usedIn: ["AC-08 suppression"], description: "Whether the user has viewed funding insights." },
+  { attribute: "feature.crm_integration_connected", type: "boolean", usedIn: ["AC-09 suppression","AC-10 suppression"], description: "Whether the user has connected a CRM integration." },
+  { attribute: "user.sessions_this_week", type: "number", usedIn: ["RT-01 guard"], description: "Number of sessions the user has had in the current week. Reset weekly." },
+  { attribute: "user.teammates_invited", type: "number", usedIn: ["RF-01 suppression","RF-02 suppression"], description: "Total number of teammates invited by this user." }
+];
+
+const CATEGORIES = [...new Set(EVENTS.map(e => e.category))];
+const PRIORITY_ORDER = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+
+// ============================================================================
+// RENDER FUNCTIONS
+// ============================================================================
+
+function getPriorityBadge(priority) {
+  const colors = {
+    Critical: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+    High: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+    Medium: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+    Low: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+  };
+  return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colors[priority]}">${priority}</span>`;
+}
+
+function getTriggerTypeBadge(type) {
+  const colors = {
+    event: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+    behavioral: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+    scheduled: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+  };
+  return `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${colors[type]}">${type}</span>`;
+}
+
+function generateCodeExample(event) {
+  const props = event.properties.filter(p => p.name !== 'user_id' && p.name !== 'timestamp');
+  const propLines = props.map(p => `    ${p.name}: ${p.example}`).join(',\n');
+  return `analytics.track("${event.name}", {\n    user_id: currentUser.id,\n    timestamp: new Date().toISOString()${propLines ? ',\n' + propLines : ''}\n});`;
+}
+
+function copyCode(btn) {
+  const block = btn.closest('.code-block');
+  const code = block.querySelector('code').textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+  });
+}
+
+function toggleDetail(id) {
+  const el = document.getElementById(id);
+  el.classList.toggle('open');
+  const arrow = document.getElementById('arrow-' + id);
+  if (arrow) arrow.textContent = el.classList.contains('open') ? '\u25BC' : '\u25B6';
+}
+
+let currentSort = { col: 'priority', dir: 'asc' };
+let activeFilters = new Set();
+
+function sortEvents(col) {
+  if (currentSort.col === col) {
+    currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    currentSort.col = col;
+    currentSort.dir = 'asc';
+  }
+  renderOverviewTable();
+}
+
+function toggleFilter(cat) {
+  if (activeFilters.has(cat)) {
+    activeFilters.delete(cat);
+  } else {
+    activeFilters.add(cat);
+  }
+  renderOverviewTable();
+  renderDetailSections();
+  // Update button styles
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    if (activeFilters.has(btn.dataset.cat)) {
+      btn.classList.add('active', 'bg-blue-600', 'text-white');
+      btn.classList.remove('bg-gray-200', 'dark:bg-gray-700');
+    } else {
+      btn.classList.remove('active', 'bg-blue-600', 'text-white');
+      btn.classList.add('bg-gray-200', 'dark:bg-gray-700');
+    }
+  });
+}
+
+function clearFilters() {
+  activeFilters.clear();
+  renderOverviewTable();
+  renderDetailSections();
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.classList.remove('active', 'bg-blue-600', 'text-white');
+    btn.classList.add('bg-gray-200', 'dark:bg-gray-700');
+  });
+}
+
+function getFilteredEvents() {
+  let filtered = [...EVENTS];
+  if (activeFilters.size > 0) {
+    filtered = filtered.filter(e => activeFilters.has(e.category));
+  }
+  return filtered;
+}
+
+function getSortedEvents(events) {
+  return events.sort((a, b) => {
+    let cmp = 0;
+    if (currentSort.col === 'priority') {
+      cmp = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+    } else if (currentSort.col === 'name') {
+      cmp = a.name.localeCompare(b.name);
+    } else if (currentSort.col === 'category') {
+      cmp = a.category.localeCompare(b.category);
+    } else if (currentSort.col === 'messages') {
+      cmp = b.messages.length - a.messages.length;
+    } else if (currentSort.col === 'type') {
+      cmp = a.triggerType.localeCompare(b.triggerType);
+    }
+    return currentSort.dir === 'asc' ? cmp : -cmp;
+  });
+}
+
+function renderOverviewTable() {
+  const events = getSortedEvents(getFilteredEvents());
+  const tbody = document.getElementById('overview-tbody');
+  tbody.innerHTML = events.map(e => `
+    <tr class="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer" onclick="toggleDetail('detail-${e.name.replace(/\./g, '-')}')">
+      <td class="px-4 py-3 text-sm font-mono font-medium">${e.name}</td>
+      <td class="px-4 py-3 text-sm">${e.category}</td>
+      <td class="px-4 py-3 text-sm">${getTriggerTypeBadge(e.triggerType)}</td>
+      <td class="px-4 py-3 text-sm text-center">${e.messages.length > 0 ? e.messages.length : (e.guardedBy.length + e.suppressedBy.length > 0 ? '<span class="text-gray-400">(' + (e.guardedBy.length + e.suppressedBy.length) + ' ref)</span>' : '<span class="text-gray-300">-</span>')}</td>
+      <td class="px-4 py-3 text-sm">${getPriorityBadge(e.priority)}</td>
+    </tr>
+  `).join('');
+}
+
+function renderDetailSections() {
+  const container = document.getElementById('detail-sections');
+  const filtered = getFilteredEvents();
+  const byCategory = {};
+  filtered.forEach(e => {
+    if (!byCategory[e.category]) byCategory[e.category] = [];
+    byCategory[e.category].push(e);
+  });
+
+  container.innerHTML = Object.entries(byCategory).map(([cat, events]) => {
+    events.sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]);
+    return `
+      <div class="mb-8">
+        <h3 class="text-lg font-semibold mb-4 text-gray-700 dark:text-gray-300">${cat}</h3>
+        ${events.map(e => renderEventDetail(e)).join('')}
+      </div>
+    `;
+  }).join('');
+}
+
+function renderEventDetail(e) {
+  const id = 'detail-' + e.name.replace(/\./g, '-');
+  const code = generateCodeExample(e);
+  const allRefs = [];
+  e.messages.forEach(m => allRefs.push(`${m} (trigger)`));
+  e.guardedBy.forEach(m => allRefs.push(`${m} (guard)`));
+  e.suppressedBy.forEach(m => allRefs.push(`${m} (suppression)`));
+
+  return `
+    <div class="card border rounded-lg mb-3 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div class="card-header flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-900 cursor-pointer border-b border-gray-200 dark:border-gray-700" onclick="toggleDetail('${id}')">
+        <div class="flex items-center gap-3">
+          <span id="arrow-${id}" class="text-gray-400 text-xs">&#9654;</span>
+          <code class="text-sm font-semibold">${e.name}</code>
+          ${getTriggerTypeBadge(e.triggerType)}
+        </div>
+        <div>${getPriorityBadge(e.priority)}</div>
+      </div>
+      <div id="${id}" class="detail-section px-4 py-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <h4 class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 mb-1">Description</h4>
+            <p class="text-sm">${e.description}</p>
+          </div>
+          <div>
+            <h4 class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 mb-1">When to Fire</h4>
+            <p class="text-sm">${e.whenToFire}</p>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <h4 class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 mb-2">Properties</h4>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+              <thead>
+                <tr class="bg-gray-50 dark:bg-gray-900">
+                  <th class="text-left px-3 py-2 border border-gray-200 dark:border-gray-600 font-medium">Property</th>
+                  <th class="text-left px-3 py-2 border border-gray-200 dark:border-gray-600 font-medium">Type</th>
+                  <th class="text-left px-3 py-2 border border-gray-200 dark:border-gray-600 font-medium">Required</th>
+                  <th class="text-left px-3 py-2 border border-gray-200 dark:border-gray-600 font-medium">Example</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${e.properties.map(p => `
+                  <tr>
+                    <td class="px-3 py-2 border border-gray-200 dark:border-gray-600 font-mono text-xs">${p.name}</td>
+                    <td class="px-3 py-2 border border-gray-200 dark:border-gray-600">${p.type}</td>
+                    <td class="px-3 py-2 border border-gray-200 dark:border-gray-600">${p.required ? '<span class="text-green-600 dark:text-green-400">yes</span>' : '<span class="text-gray-400">no</span>'}</td>
+                    <td class="px-3 py-2 border border-gray-200 dark:border-gray-600 font-mono text-xs">${p.example}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        ${allRefs.length > 0 ? `
+        <div class="mb-4">
+          <h4 class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 mb-1">Used by Messages</h4>
+          <div class="flex flex-wrap gap-1.5">
+            ${allRefs.map(r => `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono bg-gray-100 dark:bg-gray-700">${r}</span>`).join('')}
+          </div>
+        </div>` : ''}
+
+        <div class="mb-4">
+          <h4 class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 mb-2">Code Example</h4>
+          <div class="code-block bg-gray-900 dark:bg-black rounded-lg p-4 overflow-x-auto border border-gray-700">
+            <button onclick="copyCode(this)" class="copy-btn px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 rounded">Copy</button>
+            <code class="text-sm text-green-400 whitespace-pre">${code}</code>
+          </div>
+        </div>
+
+        ${e.notes ? `
+        <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+          <h4 class="text-xs font-semibold uppercase text-amber-700 dark:text-amber-400 mb-1">Implementation Notes</h4>
+          <p class="text-sm text-amber-800 dark:text-amber-300">${e.notes}</p>
+        </div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function renderProfileAttributes() {
+  const tbody = document.getElementById('profile-tbody');
+  tbody.innerHTML = PROFILE_ATTRIBUTES.map(a => `
+    <tr>
+      <td class="px-4 py-3 text-sm font-mono font-medium">${a.attribute}</td>
+      <td class="px-4 py-3 text-sm">${a.type}</td>
+      <td class="px-4 py-3 text-sm">${a.usedIn.map(u => `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono bg-gray-100 dark:bg-gray-700 mr-1 mb-1">${u}</span>`).join('')}</td>
+      <td class="px-4 py-3 text-sm">${a.description}</td>
+    </tr>
+  `).join('');
+}
+
+// ============================================================================
+// INIT
+// ============================================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Stats
+  const totalEvents = EVENTS.length;
+  const criticalCount = EVENTS.filter(e => e.priority === 'Critical').length;
+  const highCount = EVENTS.filter(e => e.priority === 'High').length;
+  const mediumCount = EVENTS.filter(e => e.priority === 'Medium').length;
+  const lowCount = EVENTS.filter(e => e.priority === 'Low').length;
+  const totalMessages = new Set(EVENTS.flatMap(e => [...e.messages, ...e.guardedBy, ...e.suppressedBy])).size;
+  const behavioralCount = EVENTS.filter(e => e.triggerType === 'behavioral').length;
+  const scheduledCount = EVENTS.filter(e => e.triggerType === 'scheduled').length;
+
+  document.getElementById('stat-events').textContent = totalEvents;
+  document.getElementById('stat-categories').textContent = CATEGORIES.length;
+  document.getElementById('stat-messages').textContent = totalMessages;
+  document.getElementById('stat-critical').textContent = criticalCount;
+  document.getElementById('stat-high').textContent = highCount;
+  document.getElementById('stat-medium').textContent = mediumCount;
+  document.getElementById('stat-low').textContent = lowCount;
+  document.getElementById('stat-behavioral').textContent = behavioralCount + scheduledCount;
+
+  // Render filters
+  const filterContainer = document.getElementById('category-filters');
+  filterContainer.innerHTML = CATEGORIES.map(cat => {
+    const count = EVENTS.filter(e => e.category === cat).length;
+    return `<button class="filter-btn px-3 py-1.5 rounded-full text-xs font-medium bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors" data-cat="${cat}" onclick="toggleFilter('${cat}')">${cat} (${count})</button>`;
+  }).join('') + `<button class="px-3 py-1.5 rounded-full text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline" onclick="clearFilters()">Clear filters</button>`;
+
+  renderOverviewTable();
+  renderDetailSections();
+  renderProfileAttributes();
+});
+</script>
+
+<!-- ======================================================================== -->
+<!-- PAGE CONTENT -->
+<!-- ======================================================================== -->
+
+<div class="max-w-6xl mx-auto px-4 py-8">
+
+  <!-- Header -->
+  <header class="mb-8">
+    <div class="flex items-center justify-between flex-wrap gap-4">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Event Implementation Spec</h1>
+        <p class="text-lg text-gray-500 dark:text-gray-400 mt-1">SignalStack -- AI-Powered B2B Lead Generation</p>
+      </div>
+      <div class="text-sm text-gray-500 dark:text-gray-400">
+        Generated: February 11, 2026
+      </div>
+    </div>
+  </header>
+
+  <!-- Summary Stats -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+      <div class="text-3xl font-bold text-gray-900 dark:text-white" id="stat-events">0</div>
+      <div class="text-sm text-gray-500 dark:text-gray-400">Total Events</div>
+    </div>
+    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+      <div class="text-3xl font-bold text-gray-900 dark:text-white" id="stat-categories">0</div>
+      <div class="text-sm text-gray-500 dark:text-gray-400">Categories</div>
+    </div>
+    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+      <div class="text-3xl font-bold text-gray-900 dark:text-white" id="stat-messages">0</div>
+      <div class="text-sm text-gray-500 dark:text-gray-400">Dependent Messages</div>
+    </div>
+    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+      <div class="text-3xl font-bold text-gray-900 dark:text-white" id="stat-behavioral">0</div>
+      <div class="text-sm text-gray-500 dark:text-gray-400">Need Background Jobs</div>
+    </div>
+  </div>
+
+  <!-- Priority Breakdown -->
+  <div class="flex flex-wrap gap-3 mb-8">
+    <div class="flex items-center gap-2 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
+      <span class="text-xl font-bold text-red-600 dark:text-red-400" id="stat-critical">0</span>
+      <span class="text-sm text-red-700 dark:text-red-300">Critical</span>
+    </div>
+    <div class="flex items-center gap-2 bg-orange-50 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-800 rounded-lg px-3 py-2">
+      <span class="text-xl font-bold text-orange-600 dark:text-orange-400" id="stat-high">0</span>
+      <span class="text-sm text-orange-700 dark:text-orange-300">High</span>
+    </div>
+    <div class="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg px-3 py-2">
+      <span class="text-xl font-bold text-blue-600 dark:text-blue-400" id="stat-medium">0</span>
+      <span class="text-sm text-blue-700 dark:text-blue-300">Medium</span>
+    </div>
+    <div class="flex items-center gap-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2">
+      <span class="text-xl font-bold text-gray-600 dark:text-gray-400" id="stat-low">0</span>
+      <span class="text-sm text-gray-600 dark:text-gray-400">Low</span>
+    </div>
+  </div>
+
+  <!-- Category Filters -->
+  <div class="mb-6">
+    <h2 class="text-sm font-semibold uppercase text-gray-500 dark:text-gray-400 mb-2">Filter by Category</h2>
+    <div class="flex flex-wrap gap-2" id="category-filters"></div>
+  </div>
+
+  <!-- Priority Overview Table -->
+  <section class="mb-12">
+    <h2 class="text-xl font-semibold mb-4">Priority Overview</h2>
+    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+              <th class="sort-header text-left px-4 py-3 font-semibold" onclick="sortEvents('name')">Event</th>
+              <th class="sort-header text-left px-4 py-3 font-semibold" onclick="sortEvents('category')">Category</th>
+              <th class="sort-header text-left px-4 py-3 font-semibold" onclick="sortEvents('type')">Trigger Type</th>
+              <th class="sort-header text-center px-4 py-3 font-semibold" onclick="sortEvents('messages')">Messages Blocked</th>
+              <th class="sort-header text-left px-4 py-3 font-semibold" onclick="sortEvents('priority')">Priority</th>
+            </tr>
+          </thead>
+          <tbody id="overview-tbody" class="divide-y divide-gray-200 dark:divide-gray-700"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Per-Event Detail Sections -->
+  <section class="mb-12">
+    <h2 class="text-xl font-semibold mb-4">Event Details</h2>
+    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Click any event to expand its detail card with properties, code example, and implementation notes.</p>
+    <div id="detail-sections"></div>
+  </section>
+
+  <!-- Profile Attributes Appendix -->
+  <section class="mb-12">
+    <h2 class="text-xl font-semibold mb-4">Appendix: Profile Attributes</h2>
+    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">These user profile attributes are referenced in message guard and suppression conditions. Your messaging platform needs these values to evaluate whether to send or suppress each message.</p>
+    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+              <th class="text-left px-4 py-3 font-semibold">Attribute</th>
+              <th class="text-left px-4 py-3 font-semibold">Type</th>
+              <th class="text-left px-4 py-3 font-semibold">Used In</th>
+              <th class="text-left px-4 py-3 font-semibold">Description</th>
+            </tr>
+          </thead>
+          <tbody id="profile-tbody" class="divide-y divide-gray-200 dark:divide-gray-700"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="text-center text-sm text-gray-400 dark:text-gray-500 py-8 border-t border-gray-200 dark:border-gray-700">
+    <a href="https://github.com/sr-kai/mango-lollipop" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-medium" style="text-decoration:none">Mango Lollipop</a> &mdash; AI-powered lifecycle messaging for SaaS<br>
+    Made by Sasha Kai with probably too much coffee.
+  </footer>
+
+</div>
+
+</body>
+</html>

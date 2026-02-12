@@ -5,6 +5,7 @@
   "description": "AI-powered lifecycle messaging generator for SaaS companies",
   "license": "MIT",
   "author": "Sasha Kai",
+  "homepage": "https://sr-kai.github.io/mango-lollipop",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/sr-kai/mango-lollipop.git"
