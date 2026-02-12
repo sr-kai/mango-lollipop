@@ -6,6 +6,8 @@ Mango Lollipop uses Claude Code to analyze your business, generate a complete li
 
 It builds on proven industry templates, copywriting frameworks, and lifecycle best practices so you don't have to start from a blank page or reinvent the wheel.
 
+**[See a live demo](https://sr-kai.github.io/mango-lollipop/)** -- interactive dashboard, message previews, executive overview, and event spec generated for a fictional B2B SaaS company.
+
 ## Philosophy
 
 - **Local only** -- runs entirely on your machine through Claude Code. No hosted services, no accounts, no data leaving your terminal.
