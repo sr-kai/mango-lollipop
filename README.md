@@ -1,4 +1,4 @@
-# Mango Lollipop
+# 🥭🍭 Mango Lollipop
 
 AI-powered lifecycle messaging generator for SaaS companies.
 

@@ -3,11 +3,34 @@
   "version": "0.1.0",
   "type": "module",
   "description": "AI-powered lifecycle messaging generator for SaaS companies",
+  "license": "MIT",
+  "author": "Sasha Kai",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sr-kai/mango-lollipop.git"
+  },
+  "keywords": [
+    "lifecycle-messaging",
+    "saas",
+    "aarrr",
+    "email-marketing",
+    "claude-code",
+    "ai"
+  ],
   "bin": {
     "mango-lollipop": "bin/mango-lollipop.js"
   },
+  "files": [
+    "bin/",
+    "dist/",
+    "skills/",
+    "templates/",
+    "lib/",
+    "CLAUDE.md"
+  ],
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "commander": "^13.1.0",
