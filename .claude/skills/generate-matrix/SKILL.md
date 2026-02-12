@@ -1,5 +1,5 @@
 ---
-name: Generate Matrix
+name: generate-matrix
 description: Build the AARRR lifecycle matrix from analysis.json
 ---
 

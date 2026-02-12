@@ -1,5 +1,5 @@
 ---
-name: Iterate
+name: iterate
 description: Modify the lifecycle matrix conversationally (add, remove, change messages)
 ---
 

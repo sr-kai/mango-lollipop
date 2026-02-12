@@ -1,5 +1,5 @@
 ---
-name: Audit
+name: audit
 description: Deep analysis of existing lifecycle messaging with maturity scorecard
 ---
 

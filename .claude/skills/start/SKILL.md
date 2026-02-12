@@ -1,5 +1,5 @@
 ---
-name: Start
+name: start
 description: Start a new Mango Lollipop project — analyze your SaaS business for lifecycle messaging
 ---
 

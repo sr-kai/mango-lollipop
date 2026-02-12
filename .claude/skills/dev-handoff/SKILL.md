@@ -1,5 +1,5 @@
 ---
-name: Dev Hand-Off
+name: dev-handoff
 description: Generate developer hand-off documents (introduction email + technical event spec)
 ---
 

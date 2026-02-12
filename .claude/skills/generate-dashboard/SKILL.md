@@ -1,5 +1,5 @@
 ---
-name: Generate Dashboard
+name: generate-dashboard
 description: Create journey map, interactive dashboard, and executive overview
 ---
 

@@ -1,5 +1,5 @@
 ---
-name: Generate Messages
+name: generate-messages
 description: Write full message copy in the brand's voice (batched by 10)
 ---
 
