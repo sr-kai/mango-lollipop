@@ -10,12 +10,24 @@ It builds on proven industry templates, copywriting frameworks, and lifecycle be
 
 ## Philosophy
 
-- **Local only** -- runs entirely on your machine through Claude Code. No hosted services, no accounts, no data leaving your terminal.
-- **Production-ready deliverables** -- everything it generates (Excel, HTML, markdown) is ready to hand off to engineering or share with stakeholders. No "demo quality" output.
-- **Some effort required** -- this is a collaborative tool, not a magic button. You review each step, give feedback, and steer the output. The AI does the heavy lifting, but your judgment makes it good.
-- **Step by step** -- each skill runs independently so you can review, iterate, and course-correct before moving on. Rushing through produces mediocre results.
-- **Scalable** -- works for a 5-message onboarding sequence or a 50-message lifecycle system. The framework scales; the effort stays manageable.
-- **Easy, not complex** -- no build tools, no databases, no config files to wrestle with. Install, init, and start talking to Claude Code.
+- **Local only**
+    
+    Runs entirely on your machine through Claude Code. No hosted services, no accounts, no data leaving your terminal.
+- **Production-ready deliverables**
+
+    Everything it generates (Excel, HTML, markdown) is ready to hand off to engineering or share with stakeholders. No "demo quality" output.
+- **Some effort required**
+
+    This is a collaborative tool, not a magic button. You review each step, give feedback, and steer the output. The AI does the heavy lifting, but your judgment makes it good.
+- **Step by step**
+
+    Each skill runs independently so you can review, iterate, and course-correct before moving on. Rushing through produces mediocre results.
+- **Scalable**
+
+    Works for a 5-message onboarding sequence or a 50-message lifecycle system. The framework scales; the effort stays manageable.
+- **Easy, not complex**
+
+    No build tools, no databases, no config files to wrestle with. Install, init, and start talking to Claude Code.
 
 ## What You Get
 
